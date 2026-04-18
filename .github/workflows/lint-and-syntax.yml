@@ -15,8 +15,8 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
-          extensions: mbstring, xml, ctype, iconv, mysql
+          php-version: '8.3'
+          extensions: mbstring, xml, ctype, iconv, mysqli, pdo_mysql
       - name: Check PHP Syntax (Lint)
         run: |
           set -euo pipefail
