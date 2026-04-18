@@ -19,7 +19,10 @@ jobs:
           extensions: mbstring, xml, ctype, iconv, mysql
       - name: Check PHP Syntax (Lint)
         run: |
-          find . -name "*.php" -exec php -l {} \; | grep -v "No syntax errors detected" || true
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            php -l "$file"
+          done < <(find . -name "*.php" -print0)
 
   # Job 2: JavaScript & Node (SaaS/Frontend)
   js-frontend:
