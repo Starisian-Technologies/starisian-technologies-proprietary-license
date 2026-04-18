@@ -31,7 +31,7 @@ Except for the limited forking right described above, all other rights are reser
 
 ### 4. PATENT PENDING
 
-**NOTICE:** Certain methodologies, data structures, and software architectures within this repository are the subject of one or more pending patent applications. Unauthorized use or reproduction of these technical concepts may constitute patent infringement upon the issuance of said patents.
+**NOTICE:** Certain methodologies, data structures, and software architectures within this repository are the subject of one or more pending patent applications. Named inventors include Max Barrett ([@MaximillianGroup](https://github.com/MaximillianGroup)) on all applications and Obafa ([@Obafa](https://github.com/Obafa)) as co-inventor on select applications. Unauthorized use or reproduction of these technical concepts may constitute patent infringement upon the issuance of said patents.
 
 ### 5. WARRANTY AND LIABILITY
 
@@ -53,7 +53,7 @@ This agreement shall be governed by the laws of the State of California. Any leg
 **NOTICE: PROPRIETARY & CONFIDENTIAL**  
 All information contained herein is, and remains, the property of **Starisian Technologies**. The intellectual and technical concepts contained herein—including linguistic datasets, AI governance frameworks, and PHP/JS/Python source code—are proprietary and protected by U.S. and international copyright, trade secret, and patent laws.
 
-**PATENT PENDING:** This repository contains methodologies subject to pending patent applications.
+**PATENT PENDING:** This repository contains methodologies subject to pending patent applications. Named inventors: Max Barrett ([@MaximillianGroup](https://github.com/MaximillianGroup)) on all applications; Obafa ([@Obafa](https://github.com/Obafa)) as co-inventor on select applications.
 
 ### 1. Authorized Access Only
 

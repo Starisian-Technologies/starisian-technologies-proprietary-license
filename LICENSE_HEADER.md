@@ -38,7 +38,8 @@ Use in secondary or supporting files (e.g., utility helpers, config files, templ
 /************************************************************************
  * STARISIAN TECHNOLOGIES - PROPRIETARY AND CONFIDENTIAL
  * Copyright [2026] Starisian Technologies (Max Barrett)
- * PATENT PENDING | Jurisdiction: Los Angeles, CA
+ * PATENT PENDING — Inventors: Max Barrett (@MaximillianGroup), Obafa (@Obafa, select applications)
+ * Jurisdiction: Los Angeles, CA
  ************************************************************************/
 ```
 

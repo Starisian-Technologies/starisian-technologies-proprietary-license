@@ -9,6 +9,19 @@
 
 ---
 
+## Patent Inventors
+
+This repository contains methodologies subject to pending patent applications.
+
+| Inventor | GitHub Handle | Patent Coverage |
+|---|---|---|
+| Max Barrett | [@MaximillianGroup](https://github.com/MaximillianGroup) | All pending patent applications |
+| Obafa | [@Obafa](https://github.com/Obafa) | Select pending patent applications (co-inventor) |
+
+Both named inventors are required reviewers for all pull requests touching patent-sensitive paths (`/datasets/`, `/scripts/`). Any modification to these assets without approval of all applicable patent holders is prohibited.
+
+---
+
 ## Technical Governance
 
 As the Lead Programmer and Project Manager, **Max Barrett (@MaximillianGroup)** maintains sole authority over the architecture and deployment of the following assets:
