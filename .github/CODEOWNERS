@@ -1,0 +1,11 @@
+# Starisian Technologies Code Ownership
+# This ensures @MaximillianGroup is automatically assigned to all changes.
+
+# Default owner for everything in the repo
+* @MaximillianGroup
+
+# Explicit owners for sensitive assets
+/datasets/    @MaximillianGroup
+/marketing/   @MaximillianGroup
+/scripts/     @MaximillianGroup
+LICENSE.md    @MaximillianGroup
