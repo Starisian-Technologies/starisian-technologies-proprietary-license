@@ -36,10 +36,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-      - name: Skip duplicate Node audit
+      - name: Install & Audit
         run: |
           if [ -f package.json ]; then
-            echo "Node dependency installation and auditing are handled in lint-and-syntax.yml; skipping duplicate npm install/npm audit in core-testing.yml."
+            if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
+              npm ci
+            else
+              npm install
+            fi
+            npm audit
           else
-            echo "No package.json found — skipping Node workflow tasks."
+            echo "No package.json found — skipping npm install and audit."
           fi
