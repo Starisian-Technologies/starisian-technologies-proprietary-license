@@ -13,7 +13,7 @@ Use in all primary source files (e.g., main modules, core libraries, dataset pro
  * STARISIAN TECHNOLOGIES PROPRIETARY AND CONFIDENTIAL
  * __________________
  *
- * Copyright [2026] Starisian Technologies (Max Barrett)
+ * Copyright © 2026 Starisian Technologies (Max Barrett)
  * All Rights Reserved.
  *
  * NOTICE: All information, technical concepts, and intellectual property
@@ -37,7 +37,7 @@ Use in secondary or supporting files (e.g., utility helpers, config files, templ
 ```
 /************************************************************************
  * STARISIAN TECHNOLOGIES - PROPRIETARY AND CONFIDENTIAL
- * Copyright [2026] Starisian Technologies (Max Barrett)
+ * Copyright © 2026 Starisian Technologies (Max Barrett)
  * PATENT PENDING — Inventors: Max Barrett (@MaximillianGroup), Obafa (@Obafa, select applications)
  * Jurisdiction: Los Angeles, CA
  ************************************************************************/
