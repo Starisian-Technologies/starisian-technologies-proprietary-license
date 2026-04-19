@@ -8,8 +8,8 @@
 
 This repository contains the official **Starisian Technologies Proprietary License** language, code ownership policies, and CI workflow templates. It is intended to be used as a **GitHub Template Repository** so that all new Starisian Technologies projects inherit consistent licensing, security, and governance scaffolding from day one.
 
-**Lead Developer / IP Owner:** Max Barrett ([@MaximillianGroup](https://github.com/MaximillianGroup))  
-**Organization:** [Starisian Technologies](https://github.com/Starisian-Technologies) / MaximillianGroup  
+**Lead Developer / IP Owner:** Max Barrett ([@StarisianDevelopment](https://github.com/starisiandevelopment))  
+**Organization:** [Starisian Technologies](https://github.com/Starisian-Technologies) / Max Barrett  
 **Jurisdiction:** Los Angeles, California
 
 ---
@@ -33,7 +33,7 @@ This repository contains the official **Starisian Technologies Proprietary Licen
 
 1. Click **"Use this template"** on GitHub to create a new repository under the Starisian Technologies organization.
 2. Copy the appropriate license header from [`LICENSE_HEADER.md`](./LICENSE_HEADER.md) into every source file.
-3. The `.github/CODEOWNERS` file automatically assigns `@MaximillianGroup` as a required reviewer for all pull requests.
+3. The `.github/CODEOWNERS` file automatically assigns `@StarisianDevelopment` as a required reviewer for all pull requests.
 4. The included GitHub Actions workflows will run on every push and pull request.
 
 ---
