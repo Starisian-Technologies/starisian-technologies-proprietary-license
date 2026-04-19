@@ -25,7 +25,7 @@ This repository contains the official **Starisian Technologies Proprietary Licen
 | [`SECURITY.md`](./SECURITY.md) | Vulnerability reporting policy |
 | [`CONTRIBUTING.md`](./CONTRIBUTING.md) | Contribution and CLA policy |
 | [`.github/workflows/lint-and-syntax.yml`](.github/workflows/lint-and-syntax.yml) | CI: PHP syntax lint + Node.js audit |
-| [`.github/workflows/core-testing.yml`](.github/workflows/core-testing.yml) | CI: Python linting + Node.js audit skipped message |
+| [`.github/workflows/core-testing.yml`](.github/workflows/core-testing.yml) | CI: Python linting + conditional Node.js install/audit when `package.json` is present |
 
 ---
 
