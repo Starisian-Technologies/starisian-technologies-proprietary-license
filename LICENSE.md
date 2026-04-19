@@ -46,7 +46,7 @@ This agreement shall be governed by the laws of the State of California. Any leg
 ## PRIVATE / COMMERCIAL LICENSE — STARISIAN TECHNOLOGIES PROPRIETARY LICENSE & TERMS
 *(Applies to all private repositories, licensed deployments, and engagements governed by a Starisian Technologies Service Agreement, Commercial License, or Employment Agreement)*
 
-© 2023–2026 Starisian Technologies, a subsidiary of MaximillianGroup. All Rights Reserved.
+© 2023–2026 Starisian Technologies. All Rights Reserved.
 
 ---
 
@@ -86,5 +86,4 @@ In the event of a breach, Starisian Technologies reserves the right to pursue:
 
 **Contact Information**  
 Starisian Technologies  
-c/o MaximillianGroup  
-[GitHub: @MaximillianGroup](https://github.com/MaximillianGroup)
+[GitHub: @StarisianDevelopment](https://github.com/starisiandevelopment)
