@@ -1,0 +1,49 @@
+name: Starisian PHP & JS Logic
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  # Job 1: PHP Syntax & Security (Linguistics/Backend)
+  php-backend:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, ctype, iconv, mysqli, pdo_mysql
+      - name: Check PHP Syntax (Lint)
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            php -l "$file"
+          done < <(find . -name "*.php" -print0)
+
+  # Job 2: JavaScript & Node (SaaS/Frontend)
+  js-frontend:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install & Audit
+        run: |
+          if [ -f package.json ]; then
+            if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
+              npm ci
+            else
+              npm install
+            fi
+            npm audit
+          else
+            echo "No package.json found — skipping npm install and audit."
+          fi
