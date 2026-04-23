@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<ruleset name="SPARXSTAR">
+    <description>
+        SPARXSTAR platform coding standard.
+        Base: PSR-12 with strict typing enforcement.
+        Source: sparxstar-coding-standards-v1 | Starisian Technologies
+        This file is the floor. Repo-specific additions are additive only.
+    </description>
+
+    <!-- Primary standard -->
+    <rule ref="PSR12"/>
+
+    <!-- Strict types enforcement -->
+    <rule ref="Generic.PHP.RequireStrictTypes"/>
+
+    <!--
+        SPARXSTAR hard rule: declare(strict_types=1) MUST appear before any
+        file-level docblock. This intentionally deviates from PSR-12
+        FileHeader ordering which expects the docblock first.
+        Generic.PHP.RequireStrictTypes still enforces that strict_types
+        is declared. The ordering violation severity is suppressed here.
+    -->
+    <rule ref="PSR12.Files.FileHeader.IncorrectOrder">
+        <severity>0</severity>
+    </rule>
+
+    <!--
+        WordPress hook callbacks and PHPUnit test methods use snake_case.
+        All other methods use camelCase per PSR-12.
+        This suppression permits snake_case in those specific contexts only.
+    -->
+    <rule ref="PSR1.Methods.CamelCapsMethodName.NotCamelCaps">
+        <severity>0</severity>
+    </rule>
+
+    <!-- Apply to source and tests -->
+    <file>src</file>
+    <file>tests</file>
+</ruleset>
