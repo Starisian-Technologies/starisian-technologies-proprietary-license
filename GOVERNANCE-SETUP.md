@@ -302,6 +302,17 @@ Preflight mints a real scoped token for each gate before enabling it, so an
 App-scope problem shows up here as an explained skip rather than downstream as
 an opaque `repository not found`.
 
+**Two things preflight does not cover**, both worth knowing before you trust a
+green check:
+
+- It probes the conformance repo and the two registries — **not** the repos
+  hosting any private Composer/npm dependencies. Uncomment a PHP or pnpm job
+  and a missing scope there fails inside that job.
+- **Dependabot pull requests do not receive Actions secrets**, so both gates
+  skip on exactly the PRs that bump your pins. The `push:` trigger re-runs
+  them against `main` after the merge — so read that run, and treat a green
+  Dependabot PR as "not yet validated" rather than "checked".
+
 ---
 
 ## Troubleshooting
@@ -326,6 +337,15 @@ This is the documented most common failure on this platform, and the error
 text never says so. `preflight` now probes each scope with a real mint, so in
 a new repo you should see it as an explained skip before it ever reaches a
 checkout.
+
+**Everything looks configured but gates still skip, or the reviewer exits
+before minting.**
+Check `COMPOSER_RESOLVER_CLIENT_ID` (a **variable**, Settings → Secrets and
+variables → Actions → Variables) as well as the two secrets. It is configured
+separately from them, both `preflight` and the reviewer's `build-context`
+require it, and a repo can have both secrets visible with no variable in
+sight. The reviewer exits with an explicit error; `preflight` names it in a
+warning.
 
 **A caller fails at startup with an error about an undeclared secret.**
 Secrets do not cross the `workflow_call` boundary automatically. The callee must

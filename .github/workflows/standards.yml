@@ -17,6 +17,22 @@
 #   those is an explained skip, never a red run. Nothing here fails a repo for
 #   being new.
 #
+#   TWO LIMITS ON THAT GUARANTEE, both real:
+#
+#   1. The probes cover the two ACTIVE gates only — the conformance repo and
+#      the two registries. They do NOT probe access to private Composer/npm
+#      dependency repos, which the commented PHP/pnpm/react/node jobs need.
+#      Uncomment one of those and a missing dependency-repo scope fails
+#      inside the job, not here.
+#   2. DEPENDABOT PULL REQUESTS DO NOT RECEIVE THESE SECRETS. Actions secrets
+#      are withheld from Dependabot-triggered runs, so `creds` resolves false
+#      and BOTH gates skip — on precisely the PRs that change the pins. A
+#      pin bump therefore merges without conformance or review having run on
+#      it. Mitigation: the `push:` trigger below re-runs both gates against
+#      main after the merge, so a bad pin surfaces then rather than never.
+#      Treat a Dependabot PR's green checks as "not yet validated", and read
+#      the post-merge run.
+#
 # WHAT YOU MUST DO
 #   Uncomment the language jobs that match your repo type (see "PER-REPO-TYPE
 #   JOBS" below), then follow GOVERNANCE-SETUP.md in this repo top to bottom.
@@ -128,7 +144,14 @@ jobs:
       - id: probe-conformance
         if: steps.creds.outputs.creds == 'true'
         continue-on-error: true
-        uses: actions/create-github-app-token@v3
+        # SHA-pinned, not @v3. This step is handed the composer-resolver
+        # private key, so it is the one place in this file where a retagged
+        # third-party action would execute with a platform credential —
+        # and @v3 is a moving major alias. The pin below was resolved from
+        # the live remote (refs/tags/v3 and refs/tags/v3.2.0 both point at
+        # it); re-resolve with `git ls-remote --tags` before changing it,
+        # never copy a SHA from memory.
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
           client-id: ${{ vars.COMPOSER_RESOLVER_CLIENT_ID }}
           private-key: ${{ secrets.COMPOSER_RESOLVER_PRIVATE_KEY }}
@@ -139,7 +162,8 @@ jobs:
       - id: probe-review
         if: steps.creds.outputs.creds == 'true' && github.event.repository.private == true
         continue-on-error: true
-        uses: actions/create-github-app-token@v3
+        # SHA-pinned for the same reason as the probe above.
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
           client-id: ${{ vars.COMPOSER_RESOLVER_CLIENT_ID }}
           private-key: ${{ secrets.COMPOSER_RESOLVER_PRIVATE_KEY }}
@@ -174,7 +198,7 @@ jobs:
             echo "conformance=true" >> "$GITHUB_OUTPUT"
           else
             echo "conformance=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Conformance gates SKIPPED — the composer-resolver App minted no token for sparxstar-code-conformance. The credentials are visible, so this is App SCOPE, not secrets: org Settings -> GitHub Apps -> composer-resolver -> Repository access. See GOVERNANCE-SETUP.md Troubleshooting."
+            echo "::warning::Conformance gates SKIPPED — the composer-resolver App minted no token for sparxstar-code-conformance. Both credentials ARE visible, so the likely cause is App scope (org Settings -> GitHub Apps -> composer-resolver -> Repository access must include that repo). A revoked installation, an invalid key, or a GitHub API outage produce the same signal here — the mint step's own log says which. See GOVERNANCE-SETUP.md Troubleshooting."
           fi
 
           # The reviewer refuses to run unless the caller repo is private: it
@@ -191,7 +215,7 @@ jobs:
             echo "review=true" >> "$GITHUB_OUTPUT"
           else
             echo "review=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Claude PR review SKIPPED — the composer-resolver App minted no token for the ADR and product-spec registries. App SCOPE, not secrets: it must include BOTH registries. See GOVERNANCE-SETUP.md Troubleshooting."
+            echo "::warning::Claude PR review SKIPPED — the composer-resolver App minted no token for the ADR and product-spec registries. Both credentials ARE visible, so the likely cause is App scope, which must include BOTH registries. A revoked installation, an invalid key, or an API outage look the same here — read the mint step's log. See GOVERNANCE-SETUP.md Troubleshooting."
           fi
 
   # --------------------------------------------------------------------------
