@@ -17,6 +17,19 @@
 #   Uncomment the language jobs that match your repo type (see "PER-REPO-TYPE
 #   JOBS" below), then follow GOVERNANCE-SETUP.md in this repo top to bottom.
 #
+# ⚠ KNOWN PLATFORM CONFLICT — node-version
+#   The commented Node/React blocks below pass node-version: '22', matching
+#   BOTH the reusable workflows' own declared defaults (node-enforcement.yml and
+#   react-enforcement.yml at @v1.0.2) AND all three files in
+#   sparxstar-code-conformance/caller-templates/.
+#   AGENTS.md in this template states a Node.js 20 LTS baseline.
+#   Three live sources say 22; one document says 20. They cannot both be right,
+#   and this file follows the workflows because they are what actually executes.
+#   Resolving it is an owner call: either AGENTS.md is bumped to 22, or the
+#   enforcement workflows and their caller templates are moved to 20 and
+#   re-tagged. Do not "fix" this line in isolation — that just moves the
+#   contradiction somewhere less visible.
+#
 # PIN MODEL (D1, ruled)
 #   Every `uses:` below pins an IMMUTABLE patch tag (vMAJOR.MINOR.PATCH).
 #   Never `@main`. Never the moving `@v1` major alias. Rationale lives in
@@ -59,7 +72,11 @@ jobs:
   # --------------------------------------------------------------------------
   preflight:
     name: Preflight (credential + visibility gate)
-    runs-on: ubuntu-latest
+    # Pinned, not `ubuntu-latest`: AGENTS.md fixes the runner baseline at
+    # Ubuntu 24 LTS ("Do not assume Ubuntu 22 or Debian"), and `ubuntu-latest`
+    # silently moves off it when GitHub repoints the label. This is the only
+    # runner this file controls — the reusable workflows choose their own.
+    runs-on: ubuntu-24.04
     outputs:
       conformance: ${{ steps.check.outputs.conformance }}
       review: ${{ steps.check.outputs.review }}
