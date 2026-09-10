@@ -94,14 +94,24 @@ document; several stale copies are in circulation.
 
 What an **org owner** must do for this repository:
 
-1. **Scope the read App to it.** Org Settings → GitHub Apps → the
-   composer-resolver App → Repository access → add this repository.
+1. **Confirm the read App is installed and can reach what this repo READS.**
+   Org Settings → GitHub Apps → the composer-resolver App → Repository access.
    *Installing an App org-wide is not the same as scoping it to a repo.* This
    is the single most common misconfiguration on this platform — see
    Troubleshooting.
+   Scope it to the repos your workflows read — the two registries (step 3
+   below) and any private Composer/npm dependencies. **The PR reviewer does
+   not need App access to your own repo**: its two mint steps name the
+   registries explicitly, and your PR-head checkout uses the default
+   `GITHUB_TOKEN`. Adding your repo there grants cross-repo reach nothing
+   uses. The conformance workflows are the case that needs the installation
+   itself, for private-dependency git auth.
 2. **Confirm the org secrets and variables reach this repository.** They
    already exist at org level; a new repo simply has to be inside their
    visibility scope. Never recreate them, and never create a repo-level copy.
+   `COMPOSER_RESOLVER_CLIENT_ID` is not optional: the reviewer's
+   `build-context` job validates it and exits 1 with an explicit error when
+   it is empty, before minting anything.
 3. **Scope the read App to the registries too**, if it is not already: the PR
    reviewer checks out both `sparxstar-architecture-governance-registry` and
    `sparxstar-product-specification-registry`. Missing either produces the
@@ -190,9 +200,31 @@ the norm.
 
 ## Step 5 — Declare what governs you
 
-Fill in `sparxstar-specs.yml` at the repo root. Empty lists are valid and the
-reviewer still runs, but findings stay generic — filling this in is what makes
-a finding cite the rule it broke.
+Fill in `sparxstar-specs.yml` at the repo root. Leaving it empty is valid and
+the reviewer still runs, but findings stay generic — filling this in is what
+makes a finding cite the rule it broke.
+
+**Use the `- id:` shape. Anything else is ignored without an error:**
+
+```yaml
+specs:
+  - id: rlc-games
+contracts:
+  - id: cross-repo-lineage-node-contract
+adrs:
+  - id: ADR-011
+```
+
+The reviewer parses this with a regex, not a YAML engine. It requires a
+section header that is exactly `specs:` — nothing after the colon — followed
+by `- id: <value>` lines. Both `specs: [rlc-games]` and a bare `- rlc-games`
+parse to **nothing**, silently, and the run reports `(none declared)` while
+the repo reads as governed. The shipped file documents this at the point of
+use; the trap is that there is no error to notice.
+
+After your first fill-in, open the review job's log and confirm your IDs are
+listed. Ten seconds, and it is the only thing separating a working
+declaration from a silently empty one.
 
 Look every ID up before you write it; an ID that does not resolve is worse than
 an empty list, because the repo reads as governed when it is not. The file
