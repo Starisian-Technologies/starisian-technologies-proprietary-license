@@ -24,17 +24,34 @@ This repository contains the official **Starisian Technologies Proprietary Licen
 | [`.github/CODEOWNERS`](.github/CODEOWNERS) | GitHub CODEOWNERS file — auto-assigns @MaximillianGroup to all reviews |
 | [`SECURITY.md`](./SECURITY.md) | Vulnerability reporting policy |
 | [`CONTRIBUTING.md`](./CONTRIBUTING.md) | Contribution and CLA policy |
-| [`.github/workflows/lint-and-syntax.yml`](.github/workflows/lint-and-syntax.yml) | CI: PHP syntax lint + Node.js audit |
-| [`.github/workflows/core-testing.yml`](.github/workflows/core-testing.yml) | CI: Python linting + conditional Node.js install/audit when `package.json` is present |
+| [`GOVERNANCE-SETUP.md`](./GOVERNANCE-SETUP.md) | **Start here in a new repo** — checklist to wire it into the governance platform |
+| [`AGENTS.md`](./AGENTS.md) | Platform coding standard — replace with a description of your repo |
+| [`.github/workflows/standards.yml`](.github/workflows/standards.yml) | CI: governance caller (conformance gates + Claude PR review), credential-gated |
+| [`.github/dependabot.yml`](.github/dependabot.yml) | Opens the PRs that move the pinned workflow tags forward |
+| [`sparxstar-specs.yml`](./sparxstar-specs.yml) | Declares which specs, contracts and ADRs govern this repo |
 
 ---
 
 ## Using This Template
 
 1. Click **"Use this template"** on GitHub to create a new repository under the Starisian Technologies organization.
-2. Copy the appropriate license header from [`LICENSE_HEADER.md`](./LICENSE_HEADER.md) into every source file.
-3. The `.github/CODEOWNERS` file automatically assigns `@StarisianDevelopment` as a required reviewer for all pull requests.
-4. The included GitHub Actions workflows will run on every push and pull request.
+2. **Work [`GOVERNANCE-SETUP.md`](./GOVERNANCE-SETUP.md) top to bottom.** It is the checklist that takes the new repo from "created" to "governed" — credentials, the governance allowlist, and turning on the checks for your repo type.
+3. Copy the appropriate license header from [`LICENSE_HEADER.md`](./LICENSE_HEADER.md) into every source file.
+4. Replace [`AGENTS.md`](./AGENTS.md) with one describing your repo. The shipped copy is the platform coding standard, not a description of you — and the PR reviewer reads `AGENTS.md` into its context, so a stale one actively misleads the review.
+5. The `.github/CODEOWNERS` file automatically assigns the code owners as required reviewers for all pull requests.
+
+### What runs on day one
+
+`.github/workflows/standards.yml` calls the platform's pinned reusable
+workflows rather than implementing checks itself. Every gate sits behind a
+credential check, so **a repo created from this template is green on its first
+push** and stays green until `GOVERNANCE-SETUP.md` step 2 grants it the org
+credentials. A gate that skips with a `::warning::` is the expected state of a
+repo that has not been wired yet — the warning names the step that fixes it.
+
+Enforcement logic is never copied into a consumer repo. If a check needs to
+change, it changes once in `sparxstar-code-conformance` and every repo picks it
+up by moving its pin.
 
 ---
 

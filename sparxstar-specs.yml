@@ -1,0 +1,44 @@
+# ============================================================================
+# sparxstar-specs.yml — what governs THIS repo.
+#
+# Read by the Claude PR reviewer
+# (sparxstar-claude-pr-review/.github/workflows/claude-pr-review.yml) to
+# scope its three review tiers. Each tier cites the document ID it judged
+# against, so a finding says WHICH rule the diff broke rather than offering
+# an opinion.
+#
+# HOW IT IS READ (matters for what you can rely on)
+#   The reviewer reads this file from the pull request's BASE commit, never
+#   from the PR head. A pull request therefore cannot widen the scope it is
+#   reviewed against by editing this file in the same PR — the change takes
+#   effect only once merged. Parsing is a stdlib regex parser, not a full
+#   YAML engine: keep the flat `key:` + `- id` shape below.
+#
+#   Leaving every list empty is valid. The reviewer still runs; it just has
+#   no declared IDs to cite, so findings are generic. Filling this in is what
+#   turns the reviewer from a linter into a conformance gate.
+#
+# WHERE THE IDs COME FROM — look them up, never invent one. An ID that does
+# not resolve is worse than an empty list, because it reads as governed when
+# it is not:
+#   specs[]     — sparxstar-product-specification-registry, under specs/
+#   contracts[] — sparxstar-contracts-registry (and the ADR registry's
+#                 contracts/ directory, which governance-sync distributes to
+#                 this repo as .github/instructions/governance/contracts.compiled.md)
+#   adrs[]      — sparxstar-architecture-governance-registry, under
+#                 standards/decisions/ (ADR-0NN)
+#
+# After a governance sync lands in this repo, the compiled files under
+# .github/instructions/governance/ are the fastest place to read the IDs
+# that already apply to you.
+# ============================================================================
+
+# Product specs this repo implements. Example: rlc-games
+specs: []
+
+# Cross-repo interface contracts this repo must honour on its seams.
+# Example: cross-repo-lineage-node-contract
+contracts: []
+
+# Architecture decisions that constrain this repo. Example: ADR-011
+adrs: []
