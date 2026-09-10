@@ -29,9 +29,11 @@
 #      and BOTH gates skip — on precisely the PRs that change the pins. A
 #      pin bump therefore merges without conformance or review having run on
 #      it. Mitigation: the `push:` trigger below re-runs both gates against
-#      main after the merge, so a bad pin surfaces then rather than never.
-#      Treat a Dependabot PR's green checks as "not yet validated", and read
-#      the post-merge run.
+#      main after the merge — but ONLY `version-check`. The `review` job is
+#      `pull_request`-only (it needs a PR number), so the reviewer never runs
+#      on that push and a Dependabot pin bump is never AI-reviewed at all.
+#      Treat a Dependabot PR's green checks as "not yet validated", read the
+#      post-merge conformance run, and review pin bumps by eye.
 #
 # WHAT YOU MUST DO
 #   Uncomment the language jobs that match your repo type (see "PER-REPO-TYPE
@@ -312,12 +314,19 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-    # @v1.1.1 — the reviewer repo's canon as of this commit. It carries the
-    # checkout-target security fixes released after v1.1.0 with an identical
-    # workflow_call interface, and sparxstar-claude-pr-review's README,
-    # consumer example and tests/test_workflow_contract.py were all promoted
-    # to it together. This pin follows that canon; it does not lead it. If
-    # they disagree, the reviewer repo's tests are right and this is stale.
+    # @v1.1.1 — the highest published reviewer tag. It carries the
+    # checkout-target security fixes released after v1.1.0, with a
+    # workflow_call interface verified identical to v1.1.0's (both inputs,
+    # both required secrets).
+    #
+    # Precise about what is and is not true yet: the promotion of v1.1.1 to
+    # documented canon — README, consumer example and contract tests in
+    # sparxstar-claude-pr-review — is on that repo's open PR, NOT inside the
+    # published v1.1.1 tag, whose own docs still say v1.1.0. Likewise that
+    # PR SHA-pins the privileged mint steps in build-context; the published
+    # v1.1.1 still calls create-github-app-token@v3 internally, and a caller
+    # inherits whatever its pinned tag contains. Both reach consumers only
+    # when a new reviewer release is cut.
     uses: Starisian-Technologies/sparxstar-claude-pr-review/.github/workflows/claude-pr-review.yml@v1.1.1
     with:
       # The registry tag to review against. Must name a tag that actually

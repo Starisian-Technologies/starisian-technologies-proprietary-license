@@ -55,7 +55,7 @@ logic.
 | `sparxstar-product-specification-registry` | Canonical per-product tech specs | `fetch-specs.yml`, and the PR reviewer reads it for you |
 | `sparxstar-code-conformance` | Lint/style/standards enforcement | `uses:` in `standards.yml` |
 | `sparxstar-contracts-registry` | Shared PHP interface contracts | `contract-conformance.yml` — **not wired by this template** (see step 4); Composer for the published packages |
-| `sparxstar-claude-pr-review` | AI review against ADRs, specs and contracts | `uses:` in `standards.yml` |
+| `sparxstar-claude-pr-review` | AI review against ADRs and product specs. **Contracts are not reviewed** by the caller as shipped — that tier needs the `fetch-specs.yml` producer this template omits (step 4) | `uses:` in `standards.yml` |
 
 Two names are **retired**. Correct them on sight, in any document or workflow:
 
@@ -121,9 +121,11 @@ What an **org owner** must do for this repository:
    checkout uses the default `GITHUB_TOKEN`. Adding your own repo to the
    App's access grants cross-repo reach nothing uses.
 
-   `preflight` probes each of these with a real mint before enabling its
-   gate, so a scope gap shows up as an explained skip rather than an opaque
-   checkout error.
+   `preflight` probes **the first two** with a real mint before enabling its
+   gate, so a scope gap there shows up as an explained skip rather than an
+   opaque checkout error. It does **not** probe private-dependency repos, or
+   the optional contract job below — a missing scope on those fails inside
+   the job that needs it. See step 6.
 2. **Confirm the org secrets and variables reach this repository.** They
    already exist at org level; a new repo simply has to be inside their
    visibility scope. Never recreate them, and never create a repo-level copy.
@@ -232,6 +234,18 @@ this repo implements a shared PHP interface contract:
 Check the current tag before pinning — that repo has its own release line,
 independent of both the conformance and reviewer tags above. Its `SETUP.md`
 documents the inputs.
+
+**Two things this job needs that `preflight` does not cover:**
+
+- **App scope on `sparxstar-contracts-registry`.** Its fetch job mints a
+  token scoped to that repo by name. Preflight probes only the conformance
+  repo and the two reviewer registries, so this job can pass preflight and
+  then fail red. Add that repo to the App's access before enabling it.
+- Its privileged fetch job currently calls `create-github-app-token@v3` — a
+  moving major — while holding the App private key, so enabling this job
+  reintroduces the mutable-privileged-action exposure this template
+  otherwise avoids. Worth raising with that repo before adopting it in a
+  security-sensitive product.
 
 **Start advisory, gate when clean.** Every uncommented job ships
 `enforcement_mode: advisory` — violations are reported as warnings and do not
@@ -366,9 +380,20 @@ the same sitting and compare the exact names; a mismatch there *is* the bug.
 Never diagnose this from memory.
 
 **A reusable workflow was edited but nothing changed.**
-You are pinned to a tag, and the tag still points at the old commit. Both the
-immutable semver tag and any moving major alias must be moved onto the commit
-containing the edit. Verify with
+You are pinned to a tag, and the tag still points at the old commit — which
+is exactly what an immutable tag is supposed to do.
+
+**Publish a NEW patch tag on the commit carrying the edit, then bump the
+caller's pin to it.** Only a moving major alias (`v1`) may be repointed. Do
+not move a published semver tag: every consumer pinned to it silently starts
+running different code, which is the property the pin exists to prevent.
+
+> An older statement of the platform's "tags follow edits" rule says to move
+> *both* the semver tag and the alias. That cannot be reconciled with calling
+> the semver tag immutable, and this guide follows the immutable reading.
+> Flagged for an owner ruling rather than settled here.
+
+Verify with
 ```bash
 # Name the SOURCE repo — `origin` here is YOUR repo, whose tags are irrelevant.
 git ls-remote --tags https://github.com/Starisian-Technologies/sparxstar-code-conformance 'refs/tags/v1*'
