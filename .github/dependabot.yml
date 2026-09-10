@@ -25,7 +25,11 @@
 #   1. It does not touch `contract_ref:` in standards.yml. That is a plain `with:`
 #      value, not a `uses:` ref, and the github-actions ecosystem only rewrites
 #      `uses:`. Every pin-bump PR needs that one line edited by hand, in the same
-#      PR, to match the tag it just advanced.
+#      PR, to match the tag it just advanced. Nothing catches it if you forget:
+#      version-drift-enforcement checks out sparxstar-code-conformance and grades
+#      the contract_ref VALUE against that repo's tags -- it never reads this
+#      repo's workflow files, so it cannot see that contract_ref and the `uses:`
+#      refs have diverged.
 #   2. It does not see COMMENTED-OUT jobs. Dependabot parses the workflow YAML, so
 #      the per-repo-type blocks that ship commented in standards.yml are invisible
 #      to it. A block you uncomment months from now starts at whatever tag was

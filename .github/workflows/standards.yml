@@ -197,9 +197,16 @@ jobs:
   # --------------------------------------------------------------------------
   # version-check — applies to EVERY repo type, so it ships active.
   #
-  # Reads the `@vX.Y.Z` pins in this file and compares them to the platform's
-  # recommended tag and hard floor. Below the floor is a hard fail; behind the
-  # recommended tag is a warning.
+  # WHAT IT ACTUALLY CHECKS — narrower than it sounds. It checks out
+  # sparxstar-code-conformance and compares the `contract_ref` INPUT below
+  # against that repo's version floor and its highest published tag. Below the
+  # floor is a hard fail; behind the highest tag is a warning.
+  #
+  # It does NOT read this file. It never sees the `uses:` refs, so it cannot
+  # notice that `contract_ref` and the tags those lines pin have diverged. If
+  # you bump the `uses:` refs and leave `contract_ref` behind, this job checks
+  # the stale value and reports on that — it will not tell you the two
+  # disagree. Keeping them equal is entirely manual.
   #
   # `contract_ref` MUST equal the tag the CONFORMANCE jobs pin — this job and
   # every sparxstar-code-conformance job below. It has nothing to do with the

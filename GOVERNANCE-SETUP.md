@@ -54,7 +54,7 @@ logic.
 | `sparxstar-architecture-governance-registry` | ADRs, invariants, cross-repo contracts | pushed to you by governance-sync (step 3) |
 | `sparxstar-product-specification-registry` | Canonical per-product tech specs | `fetch-specs.yml`, and the PR reviewer reads it for you |
 | `sparxstar-code-conformance` | Lint/style/standards enforcement | `uses:` in `standards.yml` |
-| `sparxstar-contracts-registry` | Shared PHP interface contracts | `contract-conformance.yml`; Composer for the published packages |
+| `sparxstar-contracts-registry` | Shared PHP interface contracts | `contract-conformance.yml` — **not wired by this template** (see step 4); Composer for the published packages |
 | `sparxstar-claude-pr-review` | AI review against ADRs, specs and contracts | `uses:` in `standards.yml` |
 
 Two names are **retired**. Correct them on sight, in any document or workflow:
@@ -109,13 +109,21 @@ What an **org owner** must do for this repository:
    *Installing an App org-wide is not the same as scoping it to a repo.* This
    is the single most common misconfiguration on this platform — see
    Troubleshooting.
-   Scope it to the repos your workflows read — the two registries (step 3
-   below) and any private Composer/npm dependencies. **The PR reviewer does
-   not need App access to your own repo**: its two mint steps name the
-   registries explicitly, and your PR-head checkout uses the default
-   `GITHUB_TOKEN`. Adding your repo there grants cross-repo reach nothing
-   uses. The conformance workflows are the case that needs the installation
-   itself, for private-dependency git auth.
+   Scope it to every repo your workflows **read**:
+   - `sparxstar-code-conformance` — `version-drift-enforcement` mints a token
+     scoped to that repo by name, so an App that cannot see it fails the
+     day-one `version-check` job;
+   - both registries (step 3 below), for the reviewer;
+   - any repo hosting a private Composer/npm dependency.
+
+   **Not this repo.** No gate mints a token against the caller: the
+   reviewer's two mint steps name the registries explicitly, and your PR-head
+   checkout uses the default `GITHUB_TOKEN`. Adding your own repo to the
+   App's access grants cross-repo reach nothing uses.
+
+   `preflight` probes each of these with a real mint before enabling its
+   gate, so a scope gap shows up as an explained skip rather than an opaque
+   checkout error.
 2. **Confirm the org secrets and variables reach this repository.** They
    already exist at org level; a new repo simply has to be inside their
    visibility scope. Never recreate them, and never create a repo-level copy.
@@ -189,9 +197,10 @@ accident:
 
 | Axis | In this file | Means |
 |---|---|---|
-| Workflow ref (`@v1.0.2`) | every `uses:` | which executable runs. Bug fixes bump this. |
-| `contract_ref` on `version-check` | `v1.0.2` | must equal the workflow ref above, exactly |
-| `profile_version` (`v1`) | per job | the dependency/config contract you conform to |
+| Conformance workflow ref (`@v1.0.2`) | every `uses:` naming **`sparxstar-code-conformance`** | which enforcement executable runs. Bug fixes bump this. |
+| `contract_ref` on `version-check` | `v1.0.2` | must equal the conformance ref above, exactly |
+| `profile_version` (`v1`) | per conformance job | the dependency/config contract you conform to |
+| Reviewer workflow ref (`@v1.1.1`) | the `review` job's `uses:` | a tag on **`sparxstar-claude-pr-review`** — a different repo on its own release line. Never bump it to match the conformance tag. |
 
 `contract_ref` on the **`review`** job is a different axis again: it names a
 tag on the *registries*, not on this platform's workflows. Leave it unless you
@@ -199,6 +208,27 @@ know the registries carry the tag you are naming.
 
 **Pin immutable patch tags only.** Never `@main`. Never the moving `@v1` alias.
 The reasoning is in `REUSABLE-WORKFLOWS.md`; Dependabot moves the pins for you.
+
+### Optional: contract conformance
+
+This template does **not** wire `sparxstar-contracts-registry`. Add it only if
+this repo implements a shared PHP interface contract:
+
+```yaml
+  contracts:
+    needs: preflight
+    if: needs.preflight.outputs.conformance == 'true'
+    uses: Starisian-Technologies/sparxstar-contracts-registry/.github/workflows/contract-conformance.yml@v1.0.2
+    with:
+      consumer: <this-repo-name>
+      enforcement_mode: advisory
+    secrets:
+      COMPOSER_RESOLVER_PRIVATE_KEY: ${{ secrets.COMPOSER_RESOLVER_PRIVATE_KEY }}
+```
+
+Check the current tag before pinning — that repo has its own release line,
+independent of both the conformance and reviewer tags above. Its `SETUP.md`
+documents the inputs.
 
 **Start advisory, gate when clean.** Every uncommented job ships
 `enforcement_mode: advisory` — violations are reported as warnings and do not
@@ -280,10 +310,22 @@ an opaque `repository not found`.
 successfully.**
 The mint succeeding proves the App exists and the key is valid. It proves
 nothing about *scope*. Org Settings → GitHub Apps → composer-resolver →
-Repository access, and confirm every repo the workflow reads is included — for
-the PR review gate that means both registries as well as this repo. This is the
-documented most common failure on this platform, and the error text never says
-so.
+Repository access, and confirm every repo the workflow **reads** is included:
+
+| Gate | Needs App scope on |
+|---|---|
+| `version-check` | `sparxstar-code-conformance` — it mints a token scoped to that repo by name |
+| `review` | `sparxstar-architecture-governance-registry` **and** `sparxstar-product-specification-registry` |
+| private Composer/npm deps | whichever repos host them |
+
+**Not this repo.** No gate here mints a token against the caller — the
+reviewer's PR-head checkout uses the default `GITHUB_TOKEN`. Adding your own
+repo to the App's access grants reach nothing uses.
+
+This is the documented most common failure on this platform, and the error
+text never says so. `preflight` now probes each scope with a real mint, so in
+a new repo you should see it as an explained skip before it ever reaches a
+checkout.
 
 **A caller fails at startup with an error about an undeclared secret.**
 Secrets do not cross the `workflow_call` boundary automatically. The callee must
