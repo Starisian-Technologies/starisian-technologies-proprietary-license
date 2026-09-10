@@ -257,15 +257,13 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-    # @v1.1.0, not @v1.1.1, deliberately. v1.1.1 exists and carries later
-    # security fixes with an identical workflow_call interface, but v1.1.0 is
-    # the pin sparxstar-claude-pr-review's own tests/test_workflow_contract.py
-    # asserts in its README and consumer example — it is that repo's enforced
-    # canon. A template must not ship a pin that contradicts the source
-    # repo's tested guidance. Promoting v1.1.1 is one owner-approved change
-    # over there (README + consumer example + test together); this pin follows
-    # it afterwards, it does not lead it.
-    uses: Starisian-Technologies/sparxstar-claude-pr-review/.github/workflows/claude-pr-review.yml@v1.1.0
+    # @v1.1.1 — the reviewer repo's canon as of this commit. It carries the
+    # checkout-target security fixes released after v1.1.0 with an identical
+    # workflow_call interface, and sparxstar-claude-pr-review's README,
+    # consumer example and tests/test_workflow_contract.py were all promoted
+    # to it together. This pin follows that canon; it does not lead it. If
+    # they disagree, the reviewer repo's tests are right and this is stale.
+    uses: Starisian-Technologies/sparxstar-claude-pr-review/.github/workflows/claude-pr-review.yml@v1.1.1
     with:
       # The registry tag to review against. Must name a tag that actually
       # exists on the ADR and product-spec registries — this is NOT this
