@@ -38,15 +38,17 @@ This repository contains the official **Starisian Technologies Proprietary Licen
 2. **Work [`GOVERNANCE-SETUP.md`](./GOVERNANCE-SETUP.md) top to bottom.** It is the checklist that takes the new repo from "created" to "governed" — credentials, the governance allowlist, and turning on the checks for your repo type.
 3. Copy the appropriate license header from [`LICENSE_HEADER.md`](./LICENSE_HEADER.md) into every source file.
 4. Replace [`AGENTS.md`](./AGENTS.md) with one describing your repo. The shipped copy is the platform coding standard, not a description of you — and the PR reviewer reads `AGENTS.md` into its context, so a stale one actively misleads the review.
-5. The `.github/CODEOWNERS` file automatically assigns the code owners as required reviewers for all pull requests.
+5. The `.github/CODEOWNERS` file automatically **requests review** from the code owners on all pull requests. Note that CODEOWNERS only requests — it does not make their approval *required*. Enforcement comes from a branch protection rule or ruleset, which this template does not provision; add one if the new repo needs approval to be mandatory.
 
 ### What runs on day one
 
 `.github/workflows/standards.yml` calls the platform's pinned reusable
 workflows rather than implementing checks itself. Every gate sits behind a
-credential check, so **a repo created from this template is green on its first
-push** and stays green until `GOVERNANCE-SETUP.md` step 2 grants it the org
-credentials. A gate that skips with a `::warning::` is the expected state of a
+`preflight` job that checks the credentials are visible and mints a real
+scoped token to prove the GitHub App can reach what each gate reads, so **a
+repo created from this template is green on its first push** and stays green
+through every partially-wired state until `GOVERNANCE-SETUP.md` step 2 is
+complete. A gate that skips with a `::warning::` is the expected state of a
 repo that has not been wired yet — the warning names the step that fixes it.
 
 Enforcement logic is never copied into a consumer repo. If a check needs to

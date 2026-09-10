@@ -9,10 +9,17 @@ that repository from "created" to "governed". Work it top to bottom.
 **What is already done for you.** The template ships
 `.github/workflows/standards.yml` (the governance caller),
 `.github/dependabot.yml` (moves the pins), `sparxstar-specs.yml` (declares what
-governs you) and `.github/CODEOWNERS`. Every gate in `standards.yml` is gated
-behind a credential check, so this repository is **green from its first push**
-and stays green until you finish step 2. A skipped gate is the expected state
-of a repo that has not been wired yet — it is not a failure to debug.
+governs you) and `.github/CODEOWNERS`. Every gate in `standards.yml` sits
+behind a `preflight` job that checks the credentials are visible **and** mints
+a real scoped token to prove the GitHub App can reach what each gate reads. So
+this repository is **green from its first push** and stays green through every
+partially-wired state in between — missing secret, missing variable, App
+installed but not scoped. Each of those produces an explained skip naming its
+own fix, not a red run.
+
+A skipped gate is the expected state of a repo that has not been wired yet. It
+is not a failure to debug — but it is also not a pass. Step 6 is where you
+confirm the skips are gone.
 
 ---
 
@@ -74,9 +81,12 @@ Two names are **retired**. Correct them on sight, in any document or workflow:
    The shipped copy is the platform coding standard, not a description of you —
    and the PR reviewer feeds `AGENTS.md` into its context, so a stale one
    actively misleads the review.
-5. Delete `GOVERNANCE-SETUP.md` (this file) once the checklist is complete, or
-   keep it and tick the boxes. Do not leave it half-done — a half-wired repo
-   looks governed and is not.
+5. **Keep this file.** `README.md` links to it as the starting point for the
+   repo, so deleting it leaves a broken link in every repo derived from this
+   template. Tick the boxes as you go instead. If you do want it gone once the
+   repo is wired, remove the README link in the same commit.
+   Either way, do not leave the checklist half-done — a half-wired repo looks
+   governed and is not.
 
 ---
 
@@ -249,7 +259,18 @@ Open a throwaway pull request that changes one line, and confirm on the PR:
 - [ ] CODEOWNERS requested review automatically
 
 A gate that **skips** has not passed. Read the `Preflight` log: it names the
-step above that fixes it.
+step above that fixes it, and it distinguishes the three reasons a gate can
+skip, because they have different fixes:
+
+| Preflight says | What is actually wrong |
+|---|---|
+| a credential "is not visible" | `COMPOSER_RESOLVER_PRIVATE_KEY` (a **secret**) or `COMPOSER_RESOLVER_CLIENT_ID` (a **variable**) does not reach this repo. They are configured separately — having one does not imply the other. |
+| "minted no token for …" | The credentials are fine; the **App is not scoped** to that repo. Org Settings → GitHub Apps → composer-resolver → Repository access. |
+| "public … by design" | Nothing is wrong. The reviewer cannot run on a public repo. |
+
+Preflight mints a real scoped token for each gate before enabling it, so an
+App-scope problem shows up here as an explained skip rather than downstream as
+an opaque `repository not found`.
 
 ---
 

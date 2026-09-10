@@ -9,9 +9,13 @@
 #
 # WHAT IS ACTIVE OUT OF THE BOX
 #   Only the two repo-type-neutral jobs — `version-check` and `review`. Both
-#   are gated behind `preflight`, so a repo created from this template is
-#   GREEN on day one and stays green until the org credentials are actually
-#   wired. Nothing here fails a repo for being new.
+#   are gated behind `preflight`, which checks that the credentials are
+#   visible AND mints a real scoped token proving the App can reach what each
+#   gate reads. So a repo created from this template is GREEN on day one and
+#   stays green through every partially-wired state — missing secret, missing
+#   variable, App installed but not scoped to the repos being read. Each of
+#   those is an explained skip, never a red run. Nothing here fails a repo for
+#   being new.
 #
 # WHAT YOU MUST DO
 #   Uncomment the language jobs that match your repo type (see "PER-REPO-TYPE
@@ -71,46 +75,123 @@ jobs:
   # sparxstar-code-conformance/caller-templates/standards-php-wordpress.yml.
   # --------------------------------------------------------------------------
   preflight:
-    name: Preflight (credential + visibility gate)
+    name: Preflight (credential + scope gate)
     # Pinned, not `ubuntu-latest`: AGENTS.md fixes the runner baseline at
     # Ubuntu 24 LTS ("Do not assume Ubuntu 22 or Debian"), and `ubuntu-latest`
     # silently moves off it when GitHub repoints the label. This is the only
     # runner this file controls — the reusable workflows choose their own.
     runs-on: ubuntu-24.04
     outputs:
-      conformance: ${{ steps.check.outputs.conformance }}
-      review: ${{ steps.check.outputs.review }}
+      conformance: ${{ steps.decide.outputs.conformance }}
+      review: ${{ steps.decide.outputs.review }}
     steps:
-      - id: check
+      # STEP 1 — are both credentials even visible?
+      #
+      # Both are needed, and they are configured separately: the PRIVATE KEY is
+      # a secret, the CLIENT ID is a variable. A repo can easily have one and
+      # not the other. Checking only the key (an earlier version of this file
+      # did) lets a repo with no CLIENT_ID through to a callee that fails at
+      # mint — version-drift-enforcement has no guard of its own, and the
+      # reviewer's build-context exits 1 on an empty CLIENT_ID.
+      - id: creds
         shell: bash
         env:
           # Secrets cannot be read in an `if:` expression, so presence is
-          # resolved here, in a step, and published as a job output.
+          # resolved here, in a step, and published as an output.
           COMPOSER_RESOLVER_PRIVATE_KEY: ${{ secrets.COMPOSER_RESOLVER_PRIVATE_KEY }}
+          COMPOSER_RESOLVER_CLIENT_ID: ${{ vars.COMPOSER_RESOLVER_CLIENT_ID }}
+        run: |
+          set -euo pipefail
+          ok=true
+          if [[ -z "${COMPOSER_RESOLVER_PRIVATE_KEY:-}" ]]; then
+            ok=false
+            echo "::warning::COMPOSER_RESOLVER_PRIVATE_KEY (secret) is not visible to this repository. Fix: GOVERNANCE-SETUP.md step 2."
+          fi
+          if [[ -z "${COMPOSER_RESOLVER_CLIENT_ID:-}" ]]; then
+            ok=false
+            echo "::warning::COMPOSER_RESOLVER_CLIENT_ID (variable) is not visible to this repository. It is configured separately from the secret — having one does not imply the other. Fix: GOVERNANCE-SETUP.md step 2."
+          fi
+          echo "creds=${ok}" >> "$GITHUB_OUTPUT"
+
+      # STEP 2 — are the credentials actually SCOPED to what each gate reads?
+      #
+      # A visible secret proves nothing about App installation or repository
+      # access, and that gap is the platform's most common misconfiguration: it
+      # surfaces inside the callee as an opaque `repository not found` at
+      # checkout, long after this workflow could have said anything useful.
+      #
+      # So probe it here, where failing is cheap. Each probe mints a real
+      # short-lived token scoped exactly as its gate mints one; a 404 from
+      # missing App scope fails the STEP, and `continue-on-error` turns that
+      # into a signal instead of a red run. This job holds no untrusted code,
+      # and the tokens are read-only and discarded when the job ends.
+      - id: probe-conformance
+        if: steps.creds.outputs.creds == 'true'
+        continue-on-error: true
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.COMPOSER_RESOLVER_CLIENT_ID }}
+          private-key: ${{ secrets.COMPOSER_RESOLVER_PRIVATE_KEY }}
+          owner: Starisian-Technologies
+          # Mirrors version-drift-enforcement.yml's own mint scope.
+          repositories: sparxstar-code-conformance
+
+      - id: probe-review
+        if: steps.creds.outputs.creds == 'true' && github.event.repository.private == true
+        continue-on-error: true
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.COMPOSER_RESOLVER_CLIENT_ID }}
+          private-key: ${{ secrets.COMPOSER_RESOLVER_PRIVATE_KEY }}
+          owner: Starisian-Technologies
+          # The two registries claude-pr-review's build-context checks out.
+          # It does NOT need access to this repo: its PR-head checkout uses
+          # the default GITHUB_TOKEN.
+          repositories: |
+            sparxstar-architecture-governance-registry
+            sparxstar-product-specification-registry
+
+      # STEP 3 — decide, and say precisely which condition failed.
+      - id: decide
+        shell: bash
+        env:
+          CREDS: ${{ steps.creds.outputs.creds }}
+          PROBE_CONFORMANCE: ${{ steps.probe-conformance.outcome }}
+          PROBE_REVIEW: ${{ steps.probe-review.outcome }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           REPO_IS_PRIVATE: ${{ github.event.repository.private }}
         run: |
           set -euo pipefail
 
-          if [[ -n "${COMPOSER_RESOLVER_PRIVATE_KEY:-}" ]]; then
+          if [[ "${CREDS}" != "true" ]]; then
+            echo "conformance=false" >> "$GITHUB_OUTPUT"
+            echo "review=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Governance gates SKIPPED — this repository is not wired yet. The warnings above name the missing credential."
+            exit 0
+          fi
+
+          if [[ "${PROBE_CONFORMANCE}" == "success" ]]; then
             echo "conformance=true" >> "$GITHUB_OUTPUT"
           else
             echo "conformance=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::COMPOSER_RESOLVER_PRIVATE_KEY is not visible to this repository — conformance gates are SKIPPED. Fix: GOVERNANCE-SETUP.md step 2 (scope the composer-resolver App to this repo)."
+            echo "::warning::Conformance gates SKIPPED — the composer-resolver App minted no token for sparxstar-code-conformance. The credentials are visible, so this is App SCOPE, not secrets: org Settings -> GitHub Apps -> composer-resolver -> Repository access. See GOVERNANCE-SETUP.md Troubleshooting."
           fi
 
-          # The reviewer's build-context job refuses to run unless the caller
-          # repo is private: it fetches private registry content into an
-          # Actions artifact, and artifacts on a public repo are world-readable.
-          # Gate here too, so a public repo skips the job instead of failing it.
+          # The reviewer refuses to run unless the caller repo is private: it
+          # pulls private registry content into an Actions artifact, and
+          # artifacts on a public repo are world-readable. Skip rather than
+          # let the callee fail.
           if [[ "${REPO_IS_PRIVATE:-}" != "true" ]]; then
             echo "review=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Repository is public — Claude PR review is SKIPPED by design (it reads private registries into a run artifact)."
-          elif [[ -n "${ANTHROPIC_API_KEY:-}" && -n "${COMPOSER_RESOLVER_PRIVATE_KEY:-}" ]]; then
+            echo "::notice::Claude PR review SKIPPED by design — this repository is public, and the reviewer reads private registries into a run artifact."
+          elif [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
+            echo "review=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Claude PR review SKIPPED — ANTHROPIC_API_KEY is not visible to this repository. Fix: GOVERNANCE-SETUP.md step 2."
+          elif [[ "${PROBE_REVIEW}" == "success" ]]; then
             echo "review=true" >> "$GITHUB_OUTPUT"
           else
             echo "review=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::ANTHROPIC_API_KEY and/or COMPOSER_RESOLVER_PRIVATE_KEY not visible — Claude PR review is SKIPPED. Fix: GOVERNANCE-SETUP.md step 2."
+            echo "::warning::Claude PR review SKIPPED — the composer-resolver App minted no token for the ADR and product-spec registries. App SCOPE, not secrets: it must include BOTH registries. See GOVERNANCE-SETUP.md Troubleshooting."
           fi
 
   # --------------------------------------------------------------------------
@@ -118,8 +199,19 @@ jobs:
   #
   # Reads the `@vX.Y.Z` pins in this file and compares them to the platform's
   # recommended tag and hard floor. Below the floor is a hard fail; behind the
-  # recommended tag is a warning. `contract_ref` MUST equal the tag every other
-  # job in this file pins — bump them together, in one commit.
+  # recommended tag is a warning.
+  #
+  # `contract_ref` MUST equal the tag the CONFORMANCE jobs pin — this job and
+  # every sparxstar-code-conformance job below. It has nothing to do with the
+  # `review` job's own `contract_ref`, which names a tag on the REGISTRIES and
+  # moves on a separate axis. Two different inputs, same name, different
+  # version lines.
+  #
+  # ⚠ DEPENDABOT DOES NOT BUMP THIS LINE. The github-actions ecosystem updates
+  # `uses:` refs only; `contract_ref` is a plain `with:` value it cannot see.
+  # So a Dependabot pin-bump PR arrives with the `uses:` refs advanced and this
+  # value left behind, which is exactly the drift this job reports. Edit it by
+  # hand in the same PR before merging.
   #
   # write_drift_record: false keeps onboarding to the single read credential.
   # Set it true (and additionally pass CONTRACT_SYNC_PRIVATE_KEY) only if this
@@ -137,10 +229,23 @@ jobs:
       COMPOSER_RESOLVER_PRIVATE_KEY: ${{ secrets.COMPOSER_RESOLVER_PRIVATE_KEY }}
 
   # --------------------------------------------------------------------------
-  # review — Claude PR review against the ADRs, product specs and contracts.
+  # review — Claude PR review against the ADRs and product specs.
   #
   # Declare what governs this repo in `sparxstar-specs.yml` at the repo root
   # (shipped with this template) so findings cite a document ID.
+  #
+  # ⚠ THE CONTRACTS TIER IS EMPTY IN THIS CALLER, BY OMISSION. The reviewer
+  # populates specs and ADRs from the registries it checks out itself, but the
+  # contracts tier comes ONLY from the `specs-artifact` produced by the
+  # product-spec registry's fetch-specs.yml — its own input description says
+  # "the contracts tier is empty without the fetch-specs producer". This
+  # template ships no fetch-specs job, because that job needs a `specs:` input
+  # naming products only the consuming repo knows.
+  #
+  # So filling in `contracts:` in sparxstar-specs.yml does NOT by itself get
+  # those contracts reviewed. To close that gap, add a fetch-specs job here
+  # that produces the artifact and make this job `needs:` it — see the
+  # consumer example in sparxstar-claude-pr-review.
   #
   # `pull_request` ONLY — never `pull_request_target`, which would run PR-head
   # code with a read-write base-repo token.

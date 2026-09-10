@@ -18,6 +18,19 @@
 # .github/workflows/standards.yml) will warn you when you're behind and hard-fail if you drop
 # below the floor either way. This file just means you find out from a PR instead of
 # from a CI warning.
+#
+# TWO THINGS DEPENDABOT WILL NOT DO FOR YOU. Both leave a merged pin-bump PR in a
+# state version-drift then complains about, so read them before trusting the PRs:
+#
+#   1. It does not touch `contract_ref:` in standards.yml. That is a plain `with:`
+#      value, not a `uses:` ref, and the github-actions ecosystem only rewrites
+#      `uses:`. Every pin-bump PR needs that one line edited by hand, in the same
+#      PR, to match the tag it just advanced.
+#   2. It does not see COMMENTED-OUT jobs. Dependabot parses the workflow YAML, so
+#      the per-repo-type blocks that ship commented in standards.yml are invisible
+#      to it. A block you uncomment months from now starts at whatever tag was
+#      current when the template was written -- possibly below the floor. Check the
+#      pin against the current tags at the moment you enable a block.
 
 version: 2
 updates:
