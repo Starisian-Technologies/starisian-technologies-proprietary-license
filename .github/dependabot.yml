@@ -1,0 +1,53 @@
+# Shipped active by the starisian-technologies-proprietary-license template.
+# Source of truth for this file: sparxstar-code-conformance/caller-templates/dependabot.yml
+#
+# D1 (pin model, ruled): this platform pins immutable patch tags only, never the
+# moving `v1` major alias -- see REUSABLE-WORKFLOWS.md "Why you pin to an immutable
+# tag". Immutable pins mean a fix or new release never reaches your repo on its own;
+# you have to bump the pin yourself. This is that automation: Dependabot's
+# `github-actions` ecosystem already understands `uses: owner/repo@ref` lines in any
+# workflow file, including a `uses:` line that calls a reusable workflow from
+# `standards.yml` -- it needs no special configuration to find them, just enabling.
+#
+# What this gives you: when sparxstar-code-conformance (or any other pinned
+# actions/reusable-workflow source) cuts a new patch tag, Dependabot opens a PR here
+# bumping every `@vX.Y.Z` pin it finds, on the schedule below. Merge that PR (after
+# your own advisory-mode CI run looks clean) instead of hand-editing the pin.
+#
+# If you don't add this file, nothing breaks -- version-drift-enforcement (wired into
+# .github/workflows/standards.yml) will warn you when you're behind and hard-fail if you drop
+# below the floor either way. This file just means you find out from a PR instead of
+# from a CI warning.
+#
+# TWO THINGS DEPENDABOT WILL NOT DO FOR YOU. Both leave a merged pin-bump PR in a
+# state version-drift then complains about, so read them before trusting the PRs:
+#
+#   1. It does not touch `contract_ref:` in standards.yml. That is a plain `with:`
+#      value, not a `uses:` ref, and the github-actions ecosystem only rewrites
+#      `uses:`. A PR that advances a sparxstar-code-conformance ref needs that one
+#      line edited by hand, in the same PR, to match the tag it just advanced.
+#      ONLY that kind of PR: a bump to sparxstar-claude-pr-review or to the
+#      SHA-pinned token action has no relationship to contract_ref, and since
+#      there is no `groups:` block those arrive as separate PRs -- setting this
+#      input to a reviewer tag would break version-drift outright.
+#      Nothing catches a missed edit:
+#      version-drift-enforcement checks out sparxstar-code-conformance and grades
+#      the contract_ref VALUE against that repo's tags -- it never reads this
+#      repo's workflow files, so it cannot see that contract_ref and the `uses:`
+#      refs have diverged.
+#   2. It does not see COMMENTED-OUT jobs. Dependabot parses the workflow YAML, so
+#      the per-repo-type blocks that ship commented in standards.yml are invisible
+#      to it. A block you uncomment months from now starts at whatever tag was
+#      current when the template was written -- possibly below the floor. Check the
+#      pin against the current tags at the moment you enable a block.
+
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # No `groups:` block -- each pin bump (this platform's or any other pinned action's)
+    # arrives as its own PR. Grouping would bundle an unrelated repo's release with this
+    # platform's, making a single failing check harder to attribute.
+    open-pull-requests-limit: 10

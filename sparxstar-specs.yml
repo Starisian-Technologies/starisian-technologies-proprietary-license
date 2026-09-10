@@ -1,0 +1,67 @@
+# ============================================================================
+# sparxstar-specs.yml — what governs THIS repo.
+#
+# Read by the Claude PR reviewer
+# (sparxstar-claude-pr-review/.github/workflows/claude-pr-review.yml) to
+# scope its three review tiers. Each tier cites the document ID it judged
+# against, so a finding says WHICH rule the diff broke rather than offering
+# an opinion.
+#
+# ── THE SHAPE IS STRICT, AND WRONG SHAPES FAIL SILENTLY ─────────────────────
+#
+# Each section is a LIST OF MAPS with an `id:` key:
+#
+#   specs:
+#     - id: rlc-games
+#
+# The reviewer parses this with a regex, not a YAML engine. It looks for a
+# section header that is exactly `specs:` (nothing after the colon), then for
+# lines matching `- id: <value>`. Anything else is ignored WITHOUT an error —
+# the run simply reports `(none declared)`, and the repo reads as governed
+# while nothing is actually being checked:
+#
+#   specs: [rlc-games]     ← inline array. The header never matches. Ignored.
+#   specs:
+#     - rlc-games          ← bare scalar. Not `- id:`. Ignored.
+#
+# After you first fill this in, open the review job's log and confirm your IDs
+# are listed. That check takes ten seconds and is the only thing that
+# distinguishes a working declaration from a silently empty one.
+#
+# ── HOW IT IS READ ──────────────────────────────────────────────────────────
+#
+# From the pull request's BASE commit, never the PR head. A pull request
+# cannot widen the scope it is reviewed against by editing this file in the
+# same PR — the change takes effect once merged.
+#
+# Empty sections are valid. The reviewer still runs; it just has no declared
+# IDs to cite, so findings stay generic. Filling this in is what turns the
+# reviewer from a linter into a conformance gate.
+#
+# ── WHERE THE IDs COME FROM ─────────────────────────────────────────────────
+#
+# Look them up. Never invent one — an ID that does not resolve is worse than
+# an empty list, because the repo reads as governed when it is not.
+#   specs[]     — sparxstar-product-specification-registry, under specs/
+#   contracts[] — sparxstar-contracts-registry, and the ADR registry's
+#                 contracts/ directory, which governance-sync delivers here as
+#                 .github/instructions/governance/contracts.compiled.md
+#   adrs[]      — sparxstar-architecture-governance-registry, under
+#                 standards/decisions/ (ADR-0NN)
+#
+# After a governance sync lands, the compiled files under
+# .github/instructions/governance/ are the fastest place to read the IDs that
+# already apply to you.
+# ============================================================================
+
+# Product specs this repo implements.
+#   - id: rlc-games
+specs:
+
+# Cross-repo interface contracts this repo must honour on its seams.
+#   - id: cross-repo-lineage-node-contract
+contracts:
+
+# Architecture decisions that constrain this repo.
+#   - id: ADR-011
+adrs:
