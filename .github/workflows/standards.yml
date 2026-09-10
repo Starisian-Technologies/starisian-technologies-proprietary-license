@@ -37,6 +37,15 @@
 #   Uncomment the language jobs that match your repo type (see "PER-REPO-TYPE
 #   JOBS" below), then follow GOVERNANCE-SETUP.md in this repo top to bottom.
 #
+# ⚠ KNOWN PLATFORM CONFLICT — php-version
+#   AGENTS.md states "PHP matrix: 8.2 and 8.3 — both must pass", but
+#   php-enforcement.yml takes a single `php-version` and every caller template
+#   passes '8.3' alone, so a repo following this block never exercises the
+#   supported minimum. Same shape as the node-version conflict below and the
+#   same owner call: either AGENTS.md drops the matrix claim, or
+#   php-enforcement.yml grows a matrix and the caller templates follow. This
+#   block mirrors the templates rather than inventing a second 8.2 job here.
+#
 # ⚠ KNOWN PLATFORM CONFLICT — node-version
 #   The commented Node/React blocks below pass node-version: '22', matching
 #   BOTH the reusable workflows' own declared defaults (node-enforcement.yml and
@@ -51,8 +60,13 @@
 #   contradiction somewhere less visible.
 #
 # PIN MODEL (D1, ruled)
-#   Every `uses:` below pins an IMMUTABLE patch tag (vMAJOR.MINOR.PATCH).
-#   Never `@main`. Never the moving `@v1` major alias. Rationale lives in
+#   Every REUSABLE-WORKFLOW `uses:` below pins an IMMUTABLE patch tag
+#   (vMAJOR.MINOR.PATCH). Never `@main`. Never the moving `@v1` major alias.
+#   THE EXCEPTION, deliberate: the two `create-github-app-token` steps in
+#   preflight pin a COMMIT SHA, because they execute a third-party action
+#   while holding the App private key and a tag — even a patch tag — can be
+#   moved by its owner. Do not "normalise" those two back to a tag.
+#   Rationale lives in
 #   sparxstar-code-conformance/REUSABLE-WORKFLOWS.md, "Why you pin to an
 #   immutable tag" — do not restate it here.
 #   `.github/dependabot.yml` (shipped with this template) opens the PRs that
@@ -61,8 +75,13 @@
 # AUTH
 #   The mint pattern and the org App/secret names are defined once, in the
 #   Sparxstar Cross-Repo Access Standard (CRAS). This file passes named
-#   secrets only — never `secrets: inherit`. Do not restate the mint block
-#   in this repo.
+#   secrets only — never `secrets: inherit`.
+#
+#   Do not restate the mint block in this repo's DOCUMENTATION — that is how
+#   stale copies of the pattern survive. The two mint steps in `preflight`
+#   below are not a restatement: they are an executable use of it, and they
+#   are what turns a scope misconfiguration into an explained skip. Do not
+#   delete them on the strength of that rule.
 # ============================================================================
 
 name: Starisian Standards
@@ -240,9 +259,14 @@ jobs:
   #
   # ⚠ DEPENDABOT DOES NOT BUMP THIS LINE. The github-actions ecosystem updates
   # `uses:` refs only; `contract_ref` is a plain `with:` value it cannot see.
-  # So a Dependabot pin-bump PR arrives with the `uses:` refs advanced and this
-  # value left behind, which is exactly the drift this job reports. Edit it by
-  # hand in the same PR before merging.
+  # So a Dependabot PR that advances a sparxstar-code-conformance ref leaves
+  # this value behind, which is exactly the drift this job reports — edit it
+  # by hand in that PR before merging.
+  #
+  # ONLY for code-conformance bumps. A Dependabot PR that advances
+  # sparxstar-claude-pr-review or the SHA-pinned token action has nothing to
+  # do with this input; there is no grouping, so those arrive as their own
+  # PRs. Setting this to a reviewer tag would break version-drift outright.
   #
   # write_drift_record: false keeps onboarding to the single read credential.
   # Set it true (and additionally pass CONTRACT_SYNC_PRIVATE_KEY) only if this

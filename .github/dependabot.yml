@@ -24,8 +24,13 @@
 #
 #   1. It does not touch `contract_ref:` in standards.yml. That is a plain `with:`
 #      value, not a `uses:` ref, and the github-actions ecosystem only rewrites
-#      `uses:`. Every pin-bump PR needs that one line edited by hand, in the same
-#      PR, to match the tag it just advanced. Nothing catches it if you forget:
+#      `uses:`. A PR that advances a sparxstar-code-conformance ref needs that one
+#      line edited by hand, in the same PR, to match the tag it just advanced.
+#      ONLY that kind of PR: a bump to sparxstar-claude-pr-review or to the
+#      SHA-pinned token action has no relationship to contract_ref, and since
+#      there is no `groups:` block those arrive as separate PRs -- setting this
+#      input to a reviewer tag would break version-drift outright.
+#      Nothing catches a missed edit:
 #      version-drift-enforcement checks out sparxstar-code-conformance and grades
 #      the contract_ref VALUE against that repo's tags -- it never reads this
 #      repo's workflow files, so it cannot see that contract_ref and the `uses:`

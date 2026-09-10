@@ -220,7 +220,10 @@ this repo implements a shared PHP interface contract:
     if: needs.preflight.outputs.conformance == 'true'
     uses: Starisian-Technologies/sparxstar-contracts-registry/.github/workflows/contract-conformance.yml@v1.0.2
     with:
-      consumer: <this-repo-name>
+      # `consumer` takes owner/repo and defaults to the caller, so it is
+      # omitted deliberately — passing a bare repo name would override that
+      # default with a value the registry cannot match, and it would select
+      # no contracts rather than erroring.
       enforcement_mode: advisory
     secrets:
       COMPOSER_RESOLVER_PRIVATE_KEY: ${{ secrets.COMPOSER_RESOLVER_PRIVATE_KEY }}
@@ -243,6 +246,13 @@ the norm.
 Fill in `sparxstar-specs.yml` at the repo root. Leaving it empty is valid and
 the reviewer still runs, but findings stay generic — filling this in is what
 makes a finding cite the rule it broke.
+
+**`specs:` and `adrs:` work as shipped. `contracts:` does not.** The reviewer
+builds the specs and ADR tiers from registries it checks out itself, but the
+contracts tier comes only from the `fetch-specs.yml` artifact, which this
+template does not wire (step 4 explains why). Declaring `contracts:` IDs here
+without adding that producer gets you no contract findings and no error —
+see the `review` job's own comment in `standards.yml`.
 
 **Use the `- id:` shape. Anything else is ignored without an error:**
 
@@ -359,11 +369,20 @@ Never diagnose this from memory.
 You are pinned to a tag, and the tag still points at the old commit. Both the
 immutable semver tag and any moving major alias must be moved onto the commit
 containing the edit. Verify with
-`git ls-remote origin 'refs/tags/v1*'` — never from memory.
+```bash
+# Name the SOURCE repo — `origin` here is YOUR repo, whose tags are irrelevant.
+git ls-remote --tags https://github.com/Starisian-Technologies/sparxstar-code-conformance 'refs/tags/v1*'
+```
+
+…and the equivalent against whichever repo the pin you are checking belongs
+to. Never from memory.
 
 **`Claude PR review` never runs.**
 In order: is the repository private? Are both `ANTHROPIC_API_KEY` and
-`COMPOSER_RESOLVER_PRIVATE_KEY` visible to it? Is the trigger `pull_request`?
+`COMPOSER_RESOLVER_PRIVATE_KEY` visible to it? Is
+`COMPOSER_RESOLVER_CLIENT_ID` visible — it is a **variable**, configured
+separately from the secrets, and `build-context` exits on an empty one before
+minting? Is the trigger `pull_request`?
 It must never be `pull_request_target` — that would run PR-head code with a
 read-write token in the base-repo context.
 

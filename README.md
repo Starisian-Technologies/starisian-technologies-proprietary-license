@@ -51,9 +51,10 @@ through every partially-wired state until `GOVERNANCE-SETUP.md` step 2 is
 complete. A gate that skips with a `::warning::` is the expected state of a
 repo that has not been wired yet — the warning names the step that fixes it.
 
-Enforcement logic is never copied into a consumer repo. If a check needs to
-change, it changes once in `sparxstar-code-conformance` and every repo picks it
-up by moving its pin.
+Enforcement logic is never copied into a consumer repo. A conformance check
+changes once in `sparxstar-code-conformance`, and the PR reviewer changes once
+in `sparxstar-claude-pr-review`; every repo picks each up by moving that
+pin. The two are separate release lines — moving one does not move the other.
 
 ---
 
