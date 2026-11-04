@@ -24,12 +24,14 @@
 #      dependency repos, which the commented PHP/pnpm/react/node jobs need.
 #      Uncomment one of those and a missing dependency-repo scope fails
 #      inside the job, not here.
-#   2. DEPENDABOT PULL REQUESTS DO NOT RECEIVE THESE SECRETS. Actions secrets
-#      are withheld from Dependabot-triggered runs, so `creds` resolves false
-#      and BOTH gates skip — on precisely the PRs that change the pins. A
-#      pin bump therefore merges without conformance or review having run on
-#      it. Mitigation: the `push:` trigger below re-runs both gates against
-#      main after the merge — but ONLY `version-check`. The `review` job is
+#   2. DEPENDABOT PULL REQUESTS DO NOT RECEIVE ACTIONS SECRETS. They read
+#      Dependabot secrets instead, so GOVERNANCE-SETUP.md step 2 adds a
+#      Dependabot copy of COMPOSER_RESOLVER_PRIVATE_KEY. Without it, `creds`
+#      resolves false and BOTH gates skip — on precisely the PRs that change
+#      the pins. Even with it, `review` skips (ANTHROPIC_API_KEY has no
+#      Dependabot copy); the Preflight log on a Dependabot PR names whatever
+#      that run could not see. Mitigation: the `push:` trigger below re-runs
+#      the gates against main after the merge — but ONLY `version-check`. The `review` job is
 #      `pull_request`-only (it needs a PR number), so the reviewer never runs
 #      on that push and a Dependabot pin bump is never AI-reviewed at all.
 #      Treat a Dependabot PR's green checks as "not yet validated", read the
@@ -75,9 +77,12 @@
 #   move these pins forward.
 #
 # AUTH
-#   The mint pattern and the org App/secret names are defined once, in the
-#   Sparxstar Cross-Repo Access Standard (CRAS). This file passes named
-#   secrets only — never `secrets: inherit`.
+#   The mint pattern and the App/secret/variable names are defined once, in
+#   sparxstar-code-conformance/cross-repo/cross-repo-access-and-installation.md
+#   (not the product-spec registry's cross-repo standard). On this org's plan
+#   a private repo reads REPOSITORY-level copies of them, not org-level ones —
+#   GOVERNANCE-SETUP.md step 2. This file passes named secrets only — never
+#   `secrets: inherit`.
 #
 #   Do not restate the mint block in this repo's DOCUMENTATION — that is how
 #   stale copies of the pattern survive. The two mint steps in `preflight`
@@ -101,7 +106,7 @@ jobs:
   # preflight — the reason a fresh repo is not red.
   #
   # A repo created from this template may exist for days before an owner scopes
-  # the GitHub Apps to it or the org secrets become visible to it. Calling a
+  # the GitHub Apps to it or adds its repository-level secrets. Calling a
   # reusable workflow that needs COMPOSER_RESOLVER_PRIVATE_KEY before then does
   # not produce a useful failure — it produces an auth error that reads like a
   # broken workflow. So every downstream job is gated on the credential it
