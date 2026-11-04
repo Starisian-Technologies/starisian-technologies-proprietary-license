@@ -157,16 +157,28 @@ What an **org owner** must do for this repository:
    |---|---|---|
    | `COMPOSER_RESOLVER_CLIENT_ID` | Actions **variable** | always |
    | `COMPOSER_RESOLVER_PRIVATE_KEY` | Actions **secret** | always |
-   | `CONTRACT_SYNC_CLIENT_ID` | Actions **variable** | always (owner ruling, 2026-11-04) |
-   | `CONTRACT_SYNC_PRIVATE_KEY` | Actions **secret** | always (owner ruling, 2026-11-04) |
+   | `CONTRACT_SYNC_CLIENT_ID` | Actions **variable** | always — `version-check` writes a drift record |
+   | `CONTRACT_SYNC_PRIVATE_KEY` | Actions **secret** | always — `version-check` writes a drift record |
    | `ANTHROPIC_API_KEY` | Actions **secret** | the Claude PR reviewer runs here (private repos) |
    | `COMPOSER_RESOLVER_PRIVATE_KEY` | **Dependabot** secret (Settings → Secrets and variables → **Dependabot**) | Dependabot runs here (this template ships `.github/dependabot.yml`, so by default it does) |
+   | `CONTRACT_SYNC_PRIVATE_KEY` | **Dependabot** secret | Dependabot runs here **and** the repo writes a drift record — both true for this template as shipped |
 
-   The contract-sync pair is what `version-drift-enforcement` uses to write a
-   drift record. As shipped, this template's `version-check` job sets
-   `write_drift_record: false` and does not pass `CONTRACT_SYNC_PRIVATE_KEY`
-   (see its comment in `standards.yml`), so nothing here reads the pair yet.
-   Set them anyway so the repo is ready when the record is turned on.
+   **The drift record is on.** `version-check` leaves `write_drift_record`
+   at its default (true), so it records this repo's version state centrally
+   in `sparxstar-code-conformance` through the contract-sync App, and passes
+   `CONTRACT_SYNC_PRIVATE_KEY` by name. If the contract-sync pair is
+   missing, `preflight` skips `version-check` with a warning naming it; the
+   other gates still run. The contract-sync App must also be able to write
+   to `sparxstar-code-conformance` — `preflight` does not probe that scope,
+   so a gap there fails inside `version-check`'s write step.
+
+   > **Existing repo turning the drift record on?** Set the contract-sync
+   > values above — both Actions entries, and the Dependabot copy where
+   > Dependabot runs — **before** you remove a `write_drift_record: false`
+   > override or pull this template's `version-check` job into the repo.
+   > Otherwise `version-check` skips (with this template's `preflight`) or
+   > fails at its drift-record write step (with an older caller that has no
+   > contract-sync check).
 
    If the cross-repo doc and this table ever disagree, the doc wins: fix this
    table. The values come from the org owner. Never put a key in a variable,
@@ -376,7 +388,7 @@ skip, because they have different fixes:
 
 | Preflight says | What is actually wrong |
 |---|---|
-| a credential "is not visible" | `COMPOSER_RESOLVER_PRIVATE_KEY` (a **secret**) or `COMPOSER_RESOLVER_CLIENT_ID` (a **variable**) is missing from this repo's **repository-level** settings (an org-level copy does not reach a private repo on this plan). They are configured separately — having one does not imply the other. On a Dependabot PR, check the **Dependabot** secrets tab instead. Step 2. |
+| a credential "is not visible" | `COMPOSER_RESOLVER_PRIVATE_KEY` / `CONTRACT_SYNC_PRIVATE_KEY` (**secrets**) or `COMPOSER_RESOLVER_CLIENT_ID` / `CONTRACT_SYNC_CLIENT_ID` (**variables**) is missing from this repo's **repository-level** settings (an org-level copy does not reach a private repo on this plan). They are configured separately — having one does not imply the other. A missing contract-sync value skips only `version-check`. On a Dependabot PR, check the **Dependabot** secrets tab instead. Step 2. |
 | "minted no token for …" | The credentials are fine; the **App is not scoped** to that repo. Org Settings → GitHub Apps → composer-resolver → Repository access. |
 | "public … by design" | Nothing is wrong. The reviewer cannot run on a public repo. |
 
@@ -391,8 +403,9 @@ green check:
   hosting any private Composer/npm dependencies. Uncomment a PHP or pnpm job
   and a missing scope there fails inside that job.
 - **Dependabot pull requests do not receive Actions secrets.** They read
-  **Dependabot** secrets instead, which is why step 2 adds a Dependabot copy
-  of `COMPOSER_RESOLVER_PRIVATE_KEY`. Without that copy, both gates skip on
+  **Dependabot** secrets instead, which is why step 2 adds Dependabot copies
+  of `COMPOSER_RESOLVER_PRIVATE_KEY` and `CONTRACT_SYNC_PRIVATE_KEY`.
+  Without them, the gates skip on
   exactly the PRs that bump your pins. Even with it, `review` still skips on
   Dependabot PRs, because `ANTHROPIC_API_KEY` has no Dependabot copy. On a
   Dependabot PR, read the `Preflight` log: it names any credential that run

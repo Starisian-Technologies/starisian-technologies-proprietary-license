@@ -25,9 +25,10 @@
 #      Uncomment one of those and a missing dependency-repo scope fails
 #      inside the job, not here.
 #   2. DEPENDABOT PULL REQUESTS DO NOT RECEIVE ACTIONS SECRETS. They read
-#      Dependabot secrets instead, so GOVERNANCE-SETUP.md step 2 adds a
-#      Dependabot copy of COMPOSER_RESOLVER_PRIVATE_KEY. Without it, `creds`
-#      resolves false and BOTH gates skip — on precisely the PRs that change
+#      Dependabot secrets instead, so GOVERNANCE-SETUP.md step 2 adds
+#      Dependabot copies of COMPOSER_RESOLVER_PRIVATE_KEY and (because
+#      version-check writes a drift record) CONTRACT_SYNC_PRIVATE_KEY.
+#      Without them, `creds`/`sync` resolve false and the gates skip — on precisely the PRs that change
 #      the pins. Even with it, `review` skips (ANTHROPIC_API_KEY has no
 #      Dependabot copy); the Preflight log on a Dependabot PR names whatever
 #      that run could not see. Mitigation: the `push:` trigger below re-runs
@@ -126,6 +127,7 @@ jobs:
     outputs:
       conformance: ${{ steps.decide.outputs.conformance }}
       review: ${{ steps.decide.outputs.review }}
+      drift: ${{ steps.decide.outputs.drift }}
     steps:
       # STEP 1 — are both credentials even visible?
       #
@@ -142,8 +144,24 @@ jobs:
           # resolved here, in a step, and published as an output.
           COMPOSER_RESOLVER_PRIVATE_KEY: ${{ secrets.COMPOSER_RESOLVER_PRIVATE_KEY }}
           COMPOSER_RESOLVER_CLIENT_ID: ${{ vars.COMPOSER_RESOLVER_CLIENT_ID }}
+          # contract-sync pair: needed only by version-check, which writes a
+          # drift record (write_drift_record defaults to true). Checked
+          # separately so a missing pair skips version-check alone, not the
+          # language jobs or the review.
+          CONTRACT_SYNC_PRIVATE_KEY: ${{ secrets.CONTRACT_SYNC_PRIVATE_KEY }}
+          CONTRACT_SYNC_CLIENT_ID: ${{ vars.CONTRACT_SYNC_CLIENT_ID }}
         run: |
           set -euo pipefail
+          sync=true
+          if [[ -z "${CONTRACT_SYNC_PRIVATE_KEY:-}" ]]; then
+            sync=false
+            echo "::warning::CONTRACT_SYNC_PRIVATE_KEY (secret) is not visible to this repository, so version-check cannot write its drift record. Fix: GOVERNANCE-SETUP.md step 2."
+          fi
+          if [[ -z "${CONTRACT_SYNC_CLIENT_ID:-}" ]]; then
+            sync=false
+            echo "::warning::CONTRACT_SYNC_CLIENT_ID (variable) is not visible to this repository, so version-check cannot write its drift record. Fix: GOVERNANCE-SETUP.md step 2."
+          fi
+          echo "sync=${sync}" >> "$GITHUB_OUTPUT"
           ok=true
           if [[ -z "${COMPOSER_RESOLVER_PRIVATE_KEY:-}" ]]; then
             ok=false
@@ -206,6 +224,7 @@ jobs:
         shell: bash
         env:
           CREDS: ${{ steps.creds.outputs.creds }}
+          SYNC: ${{ steps.creds.outputs.sync }}
           PROBE_CONFORMANCE: ${{ steps.probe-conformance.outcome }}
           PROBE_REVIEW: ${{ steps.probe-review.outcome }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -216,14 +235,26 @@ jobs:
           if [[ "${CREDS}" != "true" ]]; then
             echo "conformance=false" >> "$GITHUB_OUTPUT"
             echo "review=false" >> "$GITHUB_OUTPUT"
+            echo "drift=false" >> "$GITHUB_OUTPUT"
             echo "::notice::Governance gates SKIPPED — this repository is not wired yet. The warnings above name the missing credential."
             exit 0
           fi
 
           if [[ "${PROBE_CONFORMANCE}" == "success" ]]; then
             echo "conformance=true" >> "$GITHUB_OUTPUT"
+            # version-check also needs the contract-sync pair. Its App scope on
+            # sparxstar-code-conformance is NOT probed here (that would mean
+            # minting a write token in preflight); a scope gap fails inside
+            # version-check's own write step.
+            if [[ "${SYNC}" == "true" ]]; then
+              echo "drift=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "drift=false" >> "$GITHUB_OUTPUT"
+              echo "::warning::Version drift SKIPPED — the contract-sync credentials named above are missing. Other conformance jobs still run."
+            fi
           else
             echo "conformance=false" >> "$GITHUB_OUTPUT"
+            echo "drift=false" >> "$GITHUB_OUTPUT"
             echo "::warning::Conformance gates SKIPPED — the composer-resolver App minted no token for sparxstar-code-conformance. Both credentials ARE visible, so the likely cause is App scope (org Settings -> GitHub Apps -> composer-resolver -> Repository access must include that repo). A revoked installation, an invalid key, or a GitHub API outage produce the same signal here — the mint step's own log says which. See GOVERNANCE-SETUP.md Troubleshooting."
           fi
 
@@ -275,20 +306,24 @@ jobs:
   # do with this input; there is no grouping, so those arrive as their own
   # PRs. Setting this to a reviewer tag would break version-drift outright.
   #
-  # write_drift_record: false keeps onboarding to the single read credential.
-  # Set it true (and additionally pass CONTRACT_SYNC_PRIVATE_KEY) only if this
-  # repo's version state should be recorded centrally.
+  # DRIFT RECORD (owner ruling, 2026-11-04): on. `write_drift_record` is left
+  # at the callee's default (true), so this repo's version state is recorded
+  # centrally in sparxstar-code-conformance via the contract-sync App. The
+  # callee declares CONTRACT_SYNC_PRIVATE_KEY (required when the record is
+  # written) and reads CONTRACT_SYNC_CLIENT_ID as a variable itself, so only
+  # the secret is passed. Preflight skips this job, with a warning, when the
+  # contract-sync pair is missing.
   # --------------------------------------------------------------------------
   version-check:
     name: Version drift
     needs: preflight
-    if: needs.preflight.outputs.conformance == 'true'
+    if: needs.preflight.outputs.drift == 'true'
     uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/version-drift-enforcement.yml@v1.0.2
     with:
       contract_ref: v1.0.2
-      write_drift_record: false
     secrets:
       COMPOSER_RESOLVER_PRIVATE_KEY: ${{ secrets.COMPOSER_RESOLVER_PRIVATE_KEY }}
+      CONTRACT_SYNC_PRIVATE_KEY: ${{ secrets.CONTRACT_SYNC_PRIVATE_KEY }}
 
   # --------------------------------------------------------------------------
   # review — Claude PR review against the ADRs and product specs.
