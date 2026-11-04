@@ -157,8 +157,16 @@ What an **org owner** must do for this repository:
    |---|---|---|
    | `COMPOSER_RESOLVER_CLIENT_ID` | Actions **variable** | always |
    | `COMPOSER_RESOLVER_PRIVATE_KEY` | Actions **secret** | always |
+   | `CONTRACT_SYNC_CLIENT_ID` | Actions **variable** | always (owner ruling, 2026-11-04) |
+   | `CONTRACT_SYNC_PRIVATE_KEY` | Actions **secret** | always (owner ruling, 2026-11-04) |
    | `ANTHROPIC_API_KEY` | Actions **secret** | the Claude PR reviewer runs here (private repos) |
    | `COMPOSER_RESOLVER_PRIVATE_KEY` | **Dependabot** secret (Settings → Secrets and variables → **Dependabot**) | Dependabot runs here (this template ships `.github/dependabot.yml`, so by default it does) |
+
+   The contract-sync pair is what `version-drift-enforcement` uses to write a
+   drift record. As shipped, this template's `version-check` job sets
+   `write_drift_record: false` and does not pass `CONTRACT_SYNC_PRIVATE_KEY`
+   (see its comment in `standards.yml`), so nothing here reads the pair yet.
+   Set them anyway so the repo is ready when the record is turned on.
 
    If the cross-repo doc and this table ever disagree, the doc wins: fix this
    table. The values come from the org owner. Never put a key in a variable,
@@ -177,11 +185,11 @@ What an **org owner** must do for this repository:
    <!-- TODO(owner): link the owner credentials script in
    sparxstar-code-conformance/cross-repo/ here once it exists. Do not copy the
    script into this repo. Tracking:
-   https://github.com/Starisian-Technologies/sparxstar-code-conformance/issues/35 -->
+   https://github.com/Starisian-Technologies/sparxstar-code-conformance/issues/40 -->
    *An owner script for setting these values is planned in
    `sparxstar-code-conformance/cross-repo/`. Until it exists, set them by hand
    as above (tracking:
-   [sparxstar-code-conformance#35](https://github.com/Starisian-Technologies/sparxstar-code-conformance/issues/35)).*
+   [sparxstar-code-conformance#40](https://github.com/Starisian-Technologies/sparxstar-code-conformance/issues/40)).*
 3. **Scope the read App to the registries too**, if it is not already: the PR
    reviewer checks out both `sparxstar-architecture-governance-registry` and
    `sparxstar-product-specification-registry`. Missing either produces the
