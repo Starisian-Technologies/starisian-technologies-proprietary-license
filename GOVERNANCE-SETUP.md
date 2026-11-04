@@ -26,13 +26,14 @@ confirm the skips are gone.
 ## Where the facts live (read this before you copy anything)
 
 This document is a **map**. It deliberately does not restate the
-authentication block, the org secret names, or the enforcement rules — a
-restated copy is where stale patterns survive. Each fact below has exactly one
-home:
+authentication block or the enforcement rules — a restated copy is where stale
+patterns survive. The few credential names it does use (step 2 and
+Troubleshooting) were read from the cross-repo doc below, and that doc
+overrides them. Each fact below has exactly one home:
 
 | You need | Its one home |
 |---|---|
-| The cross-repo auth pattern (mint blocks, App names, NEVER rules) | `sparxstar-product-specification-registry` → `specs/_platform/SPARXSTAR-CROSS-REPO-ACCESS-STANDARD.md` |
+| The cross-repo auth pattern (mint blocks, App names, secret and variable names, NEVER rules) | `sparxstar-code-conformance` → [`cross-repo/cross-repo-access-and-installation.md`](https://github.com/Starisian-Technologies/sparxstar-code-conformance/blob/main/cross-repo/cross-repo-access-and-installation.md) (public, so agents can read it) |
 | Adopting the conformance workflows (repo types, caller templates, pin policy, advisory→gate) | `sparxstar-code-conformance` → `REUSABLE-WORKFLOWS.md` |
 | The full platform wiring guide, including the propose-back flow | `sparxstar-code-conformance` → `docs/platform-setup/STARISIAN-GOVERNANCE-PLATFORM-SETUP.md` |
 | The PR reviewer's interface (inputs, secrets, caller requirements) | `sparxstar-claude-pr-review` → `README.md` and `docs/consumer-setup.md` |
@@ -41,6 +42,21 @@ home:
 If this checklist and one of those documents disagree, **that document is
 right** — it sits beside the code it describes. Fix this file rather than
 working around it.
+
+> **One known exception, pending a fix upstream.** The cross-repo doc's
+> "Org secrets and variables (already exist — reference, never recreate)"
+> section predates an owner ruling: on this org's GitHub plan, **private
+> repositories cannot read org-level secrets or variables**, and product repos
+> stay private. Each private repo therefore holds **repository-level copies**
+> of the credentials it uses (step 2). The doc correction is tracked in
+> [sparxstar-code-conformance#35](https://github.com/Starisian-Technologies/sparxstar-code-conformance/issues/35).
+> Until that lands, follow step 2 here for *where* the values live, and the
+> cross-repo doc for *what they are called*.
+>
+> `sparxstar-product-specification-registry` →
+> `specs/_platform/SPARXSTAR-CROSS-REPO-ACCESS-STANDARD.md` is **not** the
+> home for any of this. Where you see it cited, follow the code-conformance
+> doc instead.
 
 ---
 
@@ -97,10 +113,16 @@ often skipped.** Until it is done, every gate in `standards.yml` skips with a
 `::warning::` naming this step.
 
 Cross-repo access uses **two org-level GitHub Apps and no PATs, ever**. Their
-names, their org Variable and Secret names, and the exact mint block are
-defined once — in the **Cross-Repo Access Standard** (`SPARXSTAR-CROSS-REPO-ACCESS-STANDARD.md`,
-product-spec registry). Read it there. Do not copy a mint block out of an older
-document; several stale copies are in circulation.
+names, the Variable and Secret names they pair with, and the exact mint block
+are defined once — in
+[`sparxstar-code-conformance/cross-repo/cross-repo-access-and-installation.md`](https://github.com/Starisian-Technologies/sparxstar-code-conformance/blob/main/cross-repo/cross-repo-access-and-installation.md).
+Read it there. Do not copy a mint block out of an older document, and do not
+follow `SPARXSTAR-CROSS-REPO-ACCESS-STANDARD.md` in the product-spec registry;
+several stale copies are in circulation.
+
+**The credentials themselves live on this repository, not on the org.** On
+this org's plan a private repository cannot read org-level secrets or
+variables, so every private repo carries its own repository-level copies.
 
 What an **org owner** must do for this repository:
 
@@ -126,21 +148,69 @@ What an **org owner** must do for this repository:
    opaque checkout error. It does **not** probe private-dependency repos, or
    the optional contract job below — a missing scope on those fails inside
    the job that needs it. See step 6.
-2. **Confirm the org secrets and variables reach this repository.** They
-   already exist at org level; a new repo simply has to be inside their
-   visibility scope. Never recreate them, and never create a repo-level copy.
+2. **Add the repository-level variable and secrets, then prove them.**
+   Settings → Secrets and variables → **Actions**, in the *Repository*
+   section of each tab. Take the exact names from the cross-repo doc's
+   secrets-and-variables table; as of this edit they are:
+
+   | Name | Add it as | Needed when |
+   |---|---|---|
+   | `COMPOSER_RESOLVER_CLIENT_ID` | Actions **variable** | always |
+   | `COMPOSER_RESOLVER_PRIVATE_KEY` | Actions **secret** | always |
+   | `CONTRACT_SYNC_CLIENT_ID` | Actions **variable** | always — `version-check` writes a drift record |
+   | `CONTRACT_SYNC_PRIVATE_KEY` | Actions **secret** | always — `version-check` writes a drift record |
+   | `ANTHROPIC_API_KEY` | Actions **secret** | the Claude PR reviewer runs here (private repos) |
+   | `COMPOSER_RESOLVER_PRIVATE_KEY` | **Dependabot** secret (Settings → Secrets and variables → **Dependabot**) | Dependabot runs here (this template ships `.github/dependabot.yml`, so by default it does) |
+   | `CONTRACT_SYNC_PRIVATE_KEY` | **Dependabot** secret | Dependabot runs here **and** the repo writes a drift record — both true for this template as shipped |
+
+   **The drift record is on.** `version-check` leaves `write_drift_record`
+   at its default (true), so it records this repo's version state centrally
+   in `sparxstar-code-conformance` through the contract-sync App, and passes
+   `CONTRACT_SYNC_PRIVATE_KEY` by name. If the contract-sync pair is
+   missing, `preflight` skips `version-check` with a warning naming it; the
+   other gates still run. The contract-sync App must also be able to write
+   to `sparxstar-code-conformance` — `preflight` does not probe that scope,
+   so a gap there fails inside `version-check`'s write step.
+
+   > **Existing repo turning the drift record on?** Set the contract-sync
+   > values above — both Actions entries, and the Dependabot copy where
+   > Dependabot runs — **before** you remove a `write_drift_record: false`
+   > override or pull this template's `version-check` job into the repo.
+   > Otherwise `version-check` skips (with this template's `preflight`) or
+   > fails at its drift-record write step (with an older caller that has no
+   > contract-sync check).
+
+   If the cross-repo doc and this table ever disagree, the doc wins: fix this
+   table. The values come from the org owner. Never put a key in a variable,
+   and never invent a name that is not in the doc.
+
    `COMPOSER_RESOLVER_CLIENT_ID` is not optional: the reviewer's
    `build-context` job validates it and exits 1 with an explicit error when
    it is empty, before minting anything.
+
+   **Then re-run `standards.yml`** (Actions → *Starisian Standards* → the
+   latest run → *Re-run all jobs*, or push a commit) and **confirm
+   `Preflight` passes**: its log prints no `::warning::` saying a credential
+   "is not visible". A warning that names a specific credential means that
+   one is missing or misnamed at repository level.
+
+   <!-- TODO(owner): link the owner credentials script in
+   sparxstar-code-conformance/cross-repo/ here once it exists. Do not copy the
+   script into this repo. Tracking:
+   https://github.com/Starisian-Technologies/sparxstar-code-conformance/issues/40 -->
+   *An owner script for setting these values is planned in
+   `sparxstar-code-conformance/cross-repo/`. Until it exists, set them by hand
+   as above (tracking:
+   [sparxstar-code-conformance#40](https://github.com/Starisian-Technologies/sparxstar-code-conformance/issues/40)).*
 3. **Scope the read App to the registries too**, if it is not already: the PR
    reviewer checks out both `sparxstar-architecture-governance-registry` and
    `sparxstar-product-specification-registry`. Missing either produces the
    opaque failure in Troubleshooting.
 
-If you see a secret or variable name in an instruction file that you cannot
-find in org settings, **it does not exist** — several fabricated token names
-have shipped here before. Verify against org settings or a green workflow run,
-never against memory or a document.
+If you see a secret or variable name in an instruction file that is not in the
+cross-repo doc's table, **it does not exist** — several fabricated token names
+have shipped here before. Verify against that table, this repository's
+settings, or a green workflow run, never against memory.
 
 ---
 
@@ -318,7 +388,7 @@ skip, because they have different fixes:
 
 | Preflight says | What is actually wrong |
 |---|---|
-| a credential "is not visible" | `COMPOSER_RESOLVER_PRIVATE_KEY` (a **secret**) or `COMPOSER_RESOLVER_CLIENT_ID` (a **variable**) does not reach this repo. They are configured separately — having one does not imply the other. |
+| a credential "is not visible" | `COMPOSER_RESOLVER_PRIVATE_KEY` / `CONTRACT_SYNC_PRIVATE_KEY` (**secrets**) or `COMPOSER_RESOLVER_CLIENT_ID` / `CONTRACT_SYNC_CLIENT_ID` (**variables**) is missing from this repo's **repository-level** settings (an org-level copy does not reach a private repo on this plan). They are configured separately — having one does not imply the other. A missing contract-sync value skips only `version-check`. On a Dependabot PR, check the **Dependabot** secrets tab instead. Step 2. |
 | "minted no token for …" | The credentials are fine; the **App is not scoped** to that repo. Org Settings → GitHub Apps → composer-resolver → Repository access. |
 | "public … by design" | Nothing is wrong. The reviewer cannot run on a public repo. |
 
@@ -332,10 +402,16 @@ green check:
 - It probes the conformance repo and the two registries — **not** the repos
   hosting any private Composer/npm dependencies. Uncomment a PHP or pnpm job
   and a missing scope there fails inside that job.
-- **Dependabot pull requests do not receive Actions secrets**, so both gates
-  skip on exactly the PRs that bump your pins. The `push:` trigger re-runs
-  them against `main` after the merge — so read that run, and treat a green
-  Dependabot PR as "not yet validated" rather than "checked".
+- **Dependabot pull requests do not receive Actions secrets.** They read
+  **Dependabot** secrets instead, which is why step 2 adds Dependabot copies
+  of `COMPOSER_RESOLVER_PRIVATE_KEY` and `CONTRACT_SYNC_PRIVATE_KEY`.
+  Without them, the gates skip on
+  exactly the PRs that bump your pins. Even with it, `review` still skips on
+  Dependabot PRs, because `ANTHROPIC_API_KEY` has no Dependabot copy. On a
+  Dependabot PR, read the `Preflight` log: it names any credential that run
+  could not see. The `push:` trigger re-runs `version-check` against `main`
+  after the merge, so read that run too. Until you have read both, treat a
+  green Dependabot PR as "not yet validated" rather than "checked".
 
 ---
 
@@ -365,11 +441,16 @@ checkout.
 **Everything looks configured but gates still skip, or the reviewer exits
 before minting.**
 Check `COMPOSER_RESOLVER_CLIENT_ID` (a **variable**, Settings → Secrets and
-variables → Actions → Variables) as well as the two secrets. It is configured
-separately from them, both `preflight` and the reviewer's `build-context`
-require it, and a repo can have both secrets visible with no variable in
-sight. The reviewer exits with an explicit error; `preflight` names it in a
-warning.
+variables → Actions → Variables, *Repository* section) as well as the two
+secrets. It is configured separately from them, both `preflight` and the
+reviewer's `build-context` require it, and a repo can have both secrets
+visible with no variable in sight. The reviewer exits with an explicit error;
+`preflight` names it in a warning.
+
+If the org settings page shows all three at org level and they still read
+empty here, that is expected on a private repo: org-level values do not reach
+it on this plan. Add repository-level copies (step 2). Do not make the repo
+public to work around this.
 
 **A caller fails at startup with an error about an undeclared secret.**
 Secrets do not cross the `workflow_call` boundary automatically. The callee must
@@ -404,8 +485,9 @@ to. Never from memory.
 
 **`Claude PR review` never runs.**
 In order: is the repository private? Are both `ANTHROPIC_API_KEY` and
-`COMPOSER_RESOLVER_PRIVATE_KEY` visible to it? Is
-`COMPOSER_RESOLVER_CLIENT_ID` visible — it is a **variable**, configured
+`COMPOSER_RESOLVER_PRIVATE_KEY` set as **repository-level** Actions secrets?
+Is `COMPOSER_RESOLVER_CLIENT_ID` set as a repository-level variable — it is a
+**variable**, configured
 separately from the secrets, and `build-context` exits on an empty one before
 minting? Is the trigger `pull_request`?
 It must never be `pull_request_target` — that would run PR-head code with a
@@ -418,9 +500,9 @@ You are not on the allowlist. Step 3.
 
 ## Never
 
-These are hard prohibitions, carried from the Cross-Repo Access Standard's
-NEVER table. That table is the authority; this is a reminder at the point of
-use.
+These are hard prohibitions, carried from the "Never" section of
+[`sparxstar-code-conformance/cross-repo/cross-repo-access-and-installation.md`](https://github.com/Starisian-Technologies/sparxstar-code-conformance/blob/main/cross-repo/cross-repo-access-and-installation.md).
+That section is the authority; this is a reminder at the point of use.
 
 - Never `secrets: inherit`. Pass named secrets only.
 - Never a PAT for cross-repo access. Use the Apps.
@@ -429,4 +511,4 @@ use.
 - Never `@main`, and never the moving `@v1` alias, on a `uses:` line.
 - Never `pull_request_target` on a workflow that checks out PR-head code.
 - Never edit a file under `.github/instructions/governance/`.
-- Never restate the mint block in this repo. Link to the standard.
+- Never restate the mint block in this repo. Link to the cross-repo doc.
