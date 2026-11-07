@@ -278,7 +278,7 @@ jobs:
     name: Version drift
     needs: preflight
     if: needs.preflight.outputs.conformance == 'true'
-    uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/version-drift-enforcement.yml@v1.0.2
+    uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/version-drift-enforcement.yml@v1.0.3
     with:
       contract_ref: v1.0.2
       write_drift_record: false
