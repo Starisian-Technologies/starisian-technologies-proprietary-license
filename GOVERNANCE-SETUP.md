@@ -268,8 +268,8 @@ accident:
 
 | Axis | In this file | Means |
 |---|---|---|
-| Conformance workflow ref (`@v1.0.4`) | every `uses:` naming **`sparxstar-code-conformance`** | which enforcement executable runs. Bug fixes bump this. |
-| `contract_ref` on `version-check` | `v1.0.4` | must equal the conformance ref above, exactly |
+| Conformance workflow ref (`@v1.0.6`) | every `uses:` naming **`sparxstar-code-conformance`** | which enforcement executable runs. Bug fixes bump this. |
+| `contract_ref` on `version-check` | `v1.0.6` | must equal the conformance ref above, exactly |
 | `profile_version` (`v1`) | per conformance job | the dependency/config contract you conform to |
 | Reviewer workflow ref (`@v1.1.1`) | the `review` job's `uses:` | a tag on **`sparxstar-claude-pr-review`** — a different repo on its own release line. Never bump it to match the conformance tag. |
 

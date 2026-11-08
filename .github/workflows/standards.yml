@@ -319,21 +319,12 @@ jobs:
     name: Version drift
     needs: preflight
     if: needs.preflight.outputs.drift == 'true'
-    # Every run of this job writes the same drift/<owner>-<repo>.json in the
-    # governance registry, and the callee pushes once with no conflict
-    # retry. Overlapping runs (a push to develop while a PR is open) would
-    # race and fail an otherwise passing check, so this repo's version-check
-    # runs one at a time. An in-progress write is never cancelled; GitHub
-    # keeps at most one waiting run per group, so a superseded waiting run
-    # shows as cancelled rather than failed.
-    # TEMPORARY: remove this block when moving to sparxstar-code-conformance
-    # v1.0.5, whose drift-record push retries on rejection (owner ruling).
-    concurrency:
-      group: drift-record-${{ github.repository }}
-      cancel-in-progress: false
-    uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/version-drift-enforcement.yml@v1.0.4
+    # No concurrency group: from v1.0.6 the callee retries a rejected
+    # drift-record push on top of the registry's latest main, so overlapping
+    # runs no longer race (see the cross-repo doc, "Drift records").
+    uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/version-drift-enforcement.yml@v1.0.6
     with:
-      contract_ref: v1.0.4
+      contract_ref: v1.0.6
     secrets:
       COMPOSER_RESOLVER_PRIVATE_KEY: ${{ secrets.COMPOSER_RESOLVER_PRIVATE_KEY }}
       CONTRACT_SYNC_PRIVATE_KEY: ${{ secrets.CONTRACT_SYNC_PRIVATE_KEY }}
@@ -410,7 +401,7 @@ jobs:
   # pnpm:
   #   needs: preflight
   #   if: needs.preflight.outputs.conformance == 'true'
-  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/pnpm-enforcement.yml@v1.0.4
+  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/pnpm-enforcement.yml@v1.0.6
   #   with:
   #     enforcement_mode: advisory
   #   secrets:
@@ -419,7 +410,7 @@ jobs:
   # php:
   #   needs: preflight
   #   if: needs.preflight.outputs.conformance == 'true'
-  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/php-enforcement.yml@v1.0.4
+  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/php-enforcement.yml@v1.0.6
   #   with:
   #     repo_type: wp-plugin        # wp-plugin | wp-module
   #     profile_version: v1
@@ -432,7 +423,7 @@ jobs:
   # css:
   #   needs: preflight
   #   if: needs.preflight.outputs.conformance == 'true'
-  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/css-enforcement.yml@v1.0.4
+  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/css-enforcement.yml@v1.0.6
   #   with:
   #     repo_type: wp-plugin
   #     profile_version: v1
@@ -443,7 +434,7 @@ jobs:
   # media:
   #   needs: preflight
   #   if: needs.preflight.outputs.conformance == 'true'
-  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/media-enforcement.yml@v1.0.4
+  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/media-enforcement.yml@v1.0.6
   #   with:
   #     repo_type: wp-plugin
   #     enforcement_mode: advisory
@@ -455,14 +446,14 @@ jobs:
   # pnpm:
   #   needs: preflight
   #   if: needs.preflight.outputs.conformance == 'true'
-  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/pnpm-enforcement.yml@v1.0.4
+  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/pnpm-enforcement.yml@v1.0.6
   #   with:
   #     enforcement_mode: advisory
   #   secrets:
   #     COMPOSER_RESOLVER_PRIVATE_KEY: ${{ secrets.COMPOSER_RESOLVER_PRIVATE_KEY }}
   #
   # react:
-  #   # react-enforcement.yml@v1.0.4 runs `pnpm install` but declares NO
+  #   # react-enforcement.yml@v1.0.6 runs `pnpm install` but declares NO
   #   # workflow_call secrets and sets up no git auth. Do NOT pass
   #   # COMPOSER_RESOLVER_PRIVATE_KEY here — the tag does not declare it and
   #   # workflow validation rejects the call. A repo with private GitHub-hosted
@@ -471,7 +462,7 @@ jobs:
   #   # fix before working around it.
   #   needs: [preflight, pnpm]
   #   if: needs.preflight.outputs.conformance == 'true'
-  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/react-enforcement.yml@v1.0.4
+  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/react-enforcement.yml@v1.0.6
   #   with:
   #     repo_type: standalone-react
   #     profile_version: v1
@@ -482,7 +473,7 @@ jobs:
   # css:
   #   needs: [preflight, pnpm]
   #   if: needs.preflight.outputs.conformance == 'true'
-  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/css-enforcement.yml@v1.0.4
+  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/css-enforcement.yml@v1.0.6
   #   with:
   #     repo_type: standalone-react
   #     profile_version: v1
@@ -493,7 +484,7 @@ jobs:
   # media:
   #   needs: preflight
   #   if: needs.preflight.outputs.conformance == 'true'
-  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/media-enforcement.yml@v1.0.4
+  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/media-enforcement.yml@v1.0.6
   #   with:
   #     repo_type: standalone-react
   #     enforcement_mode: advisory
@@ -505,7 +496,7 @@ jobs:
   # pnpm:
   #   needs: preflight
   #   if: needs.preflight.outputs.conformance == 'true'
-  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/pnpm-enforcement.yml@v1.0.4
+  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/pnpm-enforcement.yml@v1.0.6
   #   with:
   #     enforcement_mode: advisory
   #   secrets:
@@ -513,10 +504,10 @@ jobs:
   #
   # node:
   #   # Same declared-secrets gap as `react` above — do not add a `secrets:`
-  #   # block to this job at @v1.0.4.
+  #   # block to this job at @v1.0.6.
   #   needs: [preflight, pnpm]
   #   if: needs.preflight.outputs.conformance == 'true'
-  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/node-enforcement.yml@v1.0.4
+  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/node-enforcement.yml@v1.0.6
   #   with:
   #     repo_type: standalone-node
   #     profile_version: v1
@@ -526,7 +517,7 @@ jobs:
   # media:
   #   needs: preflight
   #   if: needs.preflight.outputs.conformance == 'true'
-  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/media-enforcement.yml@v1.0.4
+  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/media-enforcement.yml@v1.0.6
   #   with:
   #     repo_type: standalone-node
   #     enforcement_mode: advisory
