@@ -24,12 +24,15 @@
 #      dependency repos, which the commented PHP/pnpm/react/node jobs need.
 #      Uncomment one of those and a missing dependency-repo scope fails
 #      inside the job, not here.
-#   2. DEPENDABOT PULL REQUESTS DO NOT RECEIVE THESE SECRETS. Actions secrets
-#      are withheld from Dependabot-triggered runs, so `creds` resolves false
-#      and BOTH gates skip — on precisely the PRs that change the pins. A
-#      pin bump therefore merges without conformance or review having run on
-#      it. Mitigation: the `push:` trigger below re-runs both gates against
-#      main after the merge — but ONLY `version-check`. The `review` job is
+#   2. DEPENDABOT PULL REQUESTS DO NOT RECEIVE ACTIONS SECRETS. They read
+#      Dependabot secrets instead, so GOVERNANCE-SETUP.md step 2 adds
+#      Dependabot copies of COMPOSER_RESOLVER_PRIVATE_KEY and (because
+#      version-check writes a drift record) CONTRACT_SYNC_PRIVATE_KEY.
+#      Without them, `creds`/`sync` resolve false and the gates skip — on precisely the PRs that change
+#      the pins. Even with it, `review` skips (ANTHROPIC_API_KEY has no
+#      Dependabot copy); the Preflight log on a Dependabot PR names whatever
+#      that run could not see. Mitigation: the `push:` trigger below re-runs
+#      the gates against main after the merge — but ONLY `version-check`. The `review` job is
 #      `pull_request`-only (it needs a PR number), so the reviewer never runs
 #      on that push and a Dependabot pin bump is never AI-reviewed at all.
 #      Treat a Dependabot PR's green checks as "not yet validated", read the
@@ -75,9 +78,12 @@
 #   move these pins forward.
 #
 # AUTH
-#   The mint pattern and the org App/secret names are defined once, in the
-#   Sparxstar Cross-Repo Access Standard (CRAS). This file passes named
-#   secrets only — never `secrets: inherit`.
+#   The mint pattern and the App/secret/variable names are defined once, in
+#   sparxstar-code-conformance/cross-repo/cross-repo-access-and-installation.md
+#   (not the product-spec registry's cross-repo standard). On this org's plan
+#   a private repo reads REPOSITORY-level copies of them, not org-level ones —
+#   GOVERNANCE-SETUP.md step 2. This file passes named secrets only — never
+#   `secrets: inherit`.
 #
 #   Do not restate the mint block in this repo's DOCUMENTATION — that is how
 #   stale copies of the pattern survive. The two mint steps in `preflight`
@@ -101,7 +107,7 @@ jobs:
   # preflight — the reason a fresh repo is not red.
   #
   # A repo created from this template may exist for days before an owner scopes
-  # the GitHub Apps to it or the org secrets become visible to it. Calling a
+  # the GitHub Apps to it or adds its repository-level secrets. Calling a
   # reusable workflow that needs COMPOSER_RESOLVER_PRIVATE_KEY before then does
   # not produce a useful failure — it produces an auth error that reads like a
   # broken workflow. So every downstream job is gated on the credential it
@@ -121,6 +127,7 @@ jobs:
     outputs:
       conformance: ${{ steps.decide.outputs.conformance }}
       review: ${{ steps.decide.outputs.review }}
+      drift: ${{ steps.decide.outputs.drift }}
     steps:
       # STEP 1 — are both credentials even visible?
       #
@@ -137,8 +144,24 @@ jobs:
           # resolved here, in a step, and published as an output.
           COMPOSER_RESOLVER_PRIVATE_KEY: ${{ secrets.COMPOSER_RESOLVER_PRIVATE_KEY }}
           COMPOSER_RESOLVER_CLIENT_ID: ${{ vars.COMPOSER_RESOLVER_CLIENT_ID }}
+          # contract-sync pair: needed only by version-check, which writes a
+          # drift record (write_drift_record defaults to true). Checked
+          # separately so a missing pair skips version-check alone, not the
+          # language jobs or the review.
+          CONTRACT_SYNC_PRIVATE_KEY: ${{ secrets.CONTRACT_SYNC_PRIVATE_KEY }}
+          CONTRACT_SYNC_CLIENT_ID: ${{ vars.CONTRACT_SYNC_CLIENT_ID }}
         run: |
           set -euo pipefail
+          sync=true
+          if [[ -z "${CONTRACT_SYNC_PRIVATE_KEY:-}" ]]; then
+            sync=false
+            echo "::warning::CONTRACT_SYNC_PRIVATE_KEY (secret) is not visible to this repository, so version-check cannot write its drift record. Fix: GOVERNANCE-SETUP.md step 2."
+          fi
+          if [[ -z "${CONTRACT_SYNC_CLIENT_ID:-}" ]]; then
+            sync=false
+            echo "::warning::CONTRACT_SYNC_CLIENT_ID (variable) is not visible to this repository, so version-check cannot write its drift record. Fix: GOVERNANCE-SETUP.md step 2."
+          fi
+          echo "sync=${sync}" >> "$GITHUB_OUTPUT"
           ok=true
           if [[ -z "${COMPOSER_RESOLVER_PRIVATE_KEY:-}" ]]; then
             ok=false
@@ -201,6 +224,7 @@ jobs:
         shell: bash
         env:
           CREDS: ${{ steps.creds.outputs.creds }}
+          SYNC: ${{ steps.creds.outputs.sync }}
           PROBE_CONFORMANCE: ${{ steps.probe-conformance.outcome }}
           PROBE_REVIEW: ${{ steps.probe-review.outcome }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -211,14 +235,26 @@ jobs:
           if [[ "${CREDS}" != "true" ]]; then
             echo "conformance=false" >> "$GITHUB_OUTPUT"
             echo "review=false" >> "$GITHUB_OUTPUT"
+            echo "drift=false" >> "$GITHUB_OUTPUT"
             echo "::notice::Governance gates SKIPPED — this repository is not wired yet. The warnings above name the missing credential."
             exit 0
           fi
 
           if [[ "${PROBE_CONFORMANCE}" == "success" ]]; then
             echo "conformance=true" >> "$GITHUB_OUTPUT"
+            # version-check also needs the contract-sync pair. Its App scope on
+            # sparxstar-architecture-governance-registry is NOT probed here (that would mean
+            # minting a write token in preflight); a scope gap fails inside
+            # version-check's own write step.
+            if [[ "${SYNC}" == "true" ]]; then
+              echo "drift=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "drift=false" >> "$GITHUB_OUTPUT"
+              echo "::warning::Version drift SKIPPED — the contract-sync credentials named above are missing. Other conformance jobs still run."
+            fi
           else
             echo "conformance=false" >> "$GITHUB_OUTPUT"
+            echo "drift=false" >> "$GITHUB_OUTPUT"
             echo "::warning::Conformance gates SKIPPED — the composer-resolver App minted no token for sparxstar-code-conformance. Both credentials ARE visible, so the likely cause is App scope (org Settings -> GitHub Apps -> composer-resolver -> Repository access must include that repo). A revoked installation, an invalid key, or a GitHub API outage produce the same signal here — the mint step's own log says which. See GOVERNANCE-SETUP.md Troubleshooting."
           fi
 
@@ -270,20 +306,37 @@ jobs:
   # do with this input; there is no grouping, so those arrive as their own
   # PRs. Setting this to a reviewer tag would break version-drift outright.
   #
-  # write_drift_record: false keeps onboarding to the single read credential.
-  # Set it true (and additionally pass CONTRACT_SYNC_PRIVATE_KEY) only if this
-  # repo's version state should be recorded centrally.
+  # DRIFT RECORD (owner ruling, 2026-11-04): on. `write_drift_record` is left
+  # at the callee's default (true), so this repo's version state is recorded
+  # centrally in sparxstar-architecture-governance-registry (internal, from
+  # v1.0.4) via the contract-sync App. The
+  # callee declares CONTRACT_SYNC_PRIVATE_KEY (required when the record is
+  # written) and reads CONTRACT_SYNC_CLIENT_ID as a variable itself, so only
+  # the secret is passed. Preflight skips this job, with a warning, when the
+  # contract-sync pair is missing.
   # --------------------------------------------------------------------------
   version-check:
     name: Version drift
     needs: preflight
-    if: needs.preflight.outputs.conformance == 'true'
-    uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/version-drift-enforcement.yml@v1.0.2
+    if: needs.preflight.outputs.drift == 'true'
+    # Every run of this job writes the same drift/<owner>-<repo>.json in the
+    # governance registry, and the callee pushes once with no conflict
+    # retry. Overlapping runs (a push to develop while a PR is open) would
+    # race and fail an otherwise passing check, so this repo's version-check
+    # runs one at a time. An in-progress write is never cancelled; GitHub
+    # keeps at most one waiting run per group, so a superseded waiting run
+    # shows as cancelled rather than failed.
+    # TEMPORARY: remove this block when moving to sparxstar-code-conformance
+    # v1.0.5, whose drift-record push retries on rejection (owner ruling).
+    concurrency:
+      group: drift-record-${{ github.repository }}
+      cancel-in-progress: false
+    uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/version-drift-enforcement.yml@v1.0.4
     with:
-      contract_ref: v1.0.2
-      write_drift_record: false
+      contract_ref: v1.0.4
     secrets:
       COMPOSER_RESOLVER_PRIVATE_KEY: ${{ secrets.COMPOSER_RESOLVER_PRIVATE_KEY }}
+      CONTRACT_SYNC_PRIVATE_KEY: ${{ secrets.CONTRACT_SYNC_PRIVATE_KEY }}
 
   # --------------------------------------------------------------------------
   # review — Claude PR review against the ADRs and product specs.
@@ -357,7 +410,7 @@ jobs:
   # pnpm:
   #   needs: preflight
   #   if: needs.preflight.outputs.conformance == 'true'
-  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/pnpm-enforcement.yml@v1.0.2
+  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/pnpm-enforcement.yml@v1.0.4
   #   with:
   #     enforcement_mode: advisory
   #   secrets:
@@ -366,7 +419,7 @@ jobs:
   # php:
   #   needs: preflight
   #   if: needs.preflight.outputs.conformance == 'true'
-  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/php-enforcement.yml@v1.0.2
+  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/php-enforcement.yml@v1.0.4
   #   with:
   #     repo_type: wp-plugin        # wp-plugin | wp-module
   #     profile_version: v1
@@ -379,7 +432,7 @@ jobs:
   # css:
   #   needs: preflight
   #   if: needs.preflight.outputs.conformance == 'true'
-  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/css-enforcement.yml@v1.0.2
+  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/css-enforcement.yml@v1.0.4
   #   with:
   #     repo_type: wp-plugin
   #     profile_version: v1
@@ -390,7 +443,7 @@ jobs:
   # media:
   #   needs: preflight
   #   if: needs.preflight.outputs.conformance == 'true'
-  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/media-enforcement.yml@v1.0.2
+  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/media-enforcement.yml@v1.0.4
   #   with:
   #     repo_type: wp-plugin
   #     enforcement_mode: advisory
@@ -402,14 +455,14 @@ jobs:
   # pnpm:
   #   needs: preflight
   #   if: needs.preflight.outputs.conformance == 'true'
-  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/pnpm-enforcement.yml@v1.0.2
+  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/pnpm-enforcement.yml@v1.0.4
   #   with:
   #     enforcement_mode: advisory
   #   secrets:
   #     COMPOSER_RESOLVER_PRIVATE_KEY: ${{ secrets.COMPOSER_RESOLVER_PRIVATE_KEY }}
   #
   # react:
-  #   # react-enforcement.yml@v1.0.2 runs `pnpm install` but declares NO
+  #   # react-enforcement.yml@v1.0.4 runs `pnpm install` but declares NO
   #   # workflow_call secrets and sets up no git auth. Do NOT pass
   #   # COMPOSER_RESOLVER_PRIVATE_KEY here — the tag does not declare it and
   #   # workflow validation rejects the call. A repo with private GitHub-hosted
@@ -418,7 +471,7 @@ jobs:
   #   # fix before working around it.
   #   needs: [preflight, pnpm]
   #   if: needs.preflight.outputs.conformance == 'true'
-  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/react-enforcement.yml@v1.0.2
+  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/react-enforcement.yml@v1.0.4
   #   with:
   #     repo_type: standalone-react
   #     profile_version: v1
@@ -429,7 +482,7 @@ jobs:
   # css:
   #   needs: [preflight, pnpm]
   #   if: needs.preflight.outputs.conformance == 'true'
-  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/css-enforcement.yml@v1.0.2
+  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/css-enforcement.yml@v1.0.4
   #   with:
   #     repo_type: standalone-react
   #     profile_version: v1
@@ -440,7 +493,7 @@ jobs:
   # media:
   #   needs: preflight
   #   if: needs.preflight.outputs.conformance == 'true'
-  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/media-enforcement.yml@v1.0.2
+  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/media-enforcement.yml@v1.0.4
   #   with:
   #     repo_type: standalone-react
   #     enforcement_mode: advisory
@@ -452,7 +505,7 @@ jobs:
   # pnpm:
   #   needs: preflight
   #   if: needs.preflight.outputs.conformance == 'true'
-  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/pnpm-enforcement.yml@v1.0.2
+  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/pnpm-enforcement.yml@v1.0.4
   #   with:
   #     enforcement_mode: advisory
   #   secrets:
@@ -460,10 +513,10 @@ jobs:
   #
   # node:
   #   # Same declared-secrets gap as `react` above — do not add a `secrets:`
-  #   # block to this job at @v1.0.2.
+  #   # block to this job at @v1.0.4.
   #   needs: [preflight, pnpm]
   #   if: needs.preflight.outputs.conformance == 'true'
-  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/node-enforcement.yml@v1.0.2
+  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/node-enforcement.yml@v1.0.4
   #   with:
   #     repo_type: standalone-node
   #     profile_version: v1
@@ -473,7 +526,7 @@ jobs:
   # media:
   #   needs: preflight
   #   if: needs.preflight.outputs.conformance == 'true'
-  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/media-enforcement.yml@v1.0.2
+  #   uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/media-enforcement.yml@v1.0.4
   #   with:
   #     repo_type: standalone-node
   #     enforcement_mode: advisory
