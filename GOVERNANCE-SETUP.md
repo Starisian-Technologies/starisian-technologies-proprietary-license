@@ -173,13 +173,22 @@ What an **org owner** must do for this repository:
    to `sparxstar-architecture-governance-registry` — `preflight` does not probe that scope,
    so a gap there fails inside `version-check`'s write step.
 
-   > **Existing repo turning the drift record on?** Set the contract-sync
-   > values above — both Actions entries, and the Dependabot copy where
-   > Dependabot runs — **before** you remove a `write_drift_record: false`
-   > override or pull this template's `version-check` job into the repo.
-   > Otherwise `version-check` skips (with this template's `preflight`) or
-   > fails at its drift-record write step (with an older caller that has no
-   > contract-sync check).
+   > **Existing repo turning the drift record on?** Copies of this template
+   > from before `v1.0.4` pin `@v1.0.2`, set `write_drift_record: false`, and
+   > don't pass the write secret. Releases up to `v1.0.3` also write to the
+   > public conformance repo, not the internal registry. In this order:
+   >
+   > 1. Set the contract-sync values above: both Actions entries, plus the
+   >    Dependabot copy where Dependabot runs.
+   > 2. Move every `sparxstar-code-conformance` pin **and** `contract_ref` to
+   >    `v1.0.4` or later.
+   > 3. Remove the `write_drift_record: false` override, and pass
+   >    `CONTRACT_SYNC_PRIVATE_KEY: ${{ secrets.CONTRACT_SYNC_PRIVATE_KEY }}` by
+   >    name in `version-check`'s `secrets:` block.
+   >
+   > Skip step 1 and `version-check` either skips (with this template's
+   > `preflight`) or fails at its drift-record write (with an older caller).
+   > The same sequence is in the cross-repo doc's "Drift records" section.
 
    If the cross-repo doc and this table ever disagree, the doc wins: fix this
    table. The values come from the org owner. Never put a key in a variable,
