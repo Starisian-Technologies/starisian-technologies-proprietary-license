@@ -165,11 +165,12 @@ What an **org owner** must do for this repository:
 
    **The drift record is on.** `version-check` leaves `write_drift_record`
    at its default (true), so it records this repo's version state centrally
-   in `sparxstar-code-conformance` through the contract-sync App, and passes
+   in `sparxstar-architecture-governance-registry` (internal; from
+   `v1.0.4`) through the contract-sync App, and passes
    `CONTRACT_SYNC_PRIVATE_KEY` by name. If the contract-sync pair is
    missing, `preflight` skips `version-check` with a warning naming it; the
    other gates still run. The contract-sync App must also be able to write
-   to `sparxstar-code-conformance` — `preflight` does not probe that scope,
+   to `sparxstar-architecture-governance-registry` — `preflight` does not probe that scope,
    so a gap there fails inside `version-check`'s write step.
 
    > **Existing repo turning the drift record on?** Set the contract-sync
@@ -269,8 +270,8 @@ accident:
 
 | Axis | In this file | Means |
 |---|---|---|
-| Conformance workflow ref (`@v1.0.2`) | every `uses:` naming **`sparxstar-code-conformance`** | which enforcement executable runs. Bug fixes bump this. |
-| `contract_ref` on `version-check` | `v1.0.2` | must equal the conformance ref above, exactly |
+| Conformance workflow ref (`@v1.0.4`) | every `uses:` naming **`sparxstar-code-conformance`** | which enforcement executable runs. Bug fixes bump this. |
+| `contract_ref` on `version-check` | `v1.0.4` | must equal the conformance ref above, exactly |
 | `profile_version` (`v1`) | per conformance job | the dependency/config contract you conform to |
 | Reviewer workflow ref (`@v1.1.1`) | the `review` job's `uses:` | a tag on **`sparxstar-claude-pr-review`** — a different repo on its own release line. Never bump it to match the conformance tag. |
 
@@ -425,7 +426,7 @@ Repository access, and confirm every repo the workflow **reads** is included:
 
 | Gate | Needs App scope on |
 |---|---|
-| `version-check` | `sparxstar-code-conformance` — it mints a token scoped to that repo by name |
+| `version-check` | composer-resolver on `sparxstar-code-conformance` (read); contract-sync on `sparxstar-architecture-governance-registry` (drift-record write) |
 | `review` | `sparxstar-architecture-governance-registry` **and** `sparxstar-product-specification-registry` |
 | private Composer/npm deps | whichever repos host them |
 
