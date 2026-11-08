@@ -43,20 +43,9 @@ If this checklist and one of those documents disagree, **that document is
 right** — it sits beside the code it describes. Fix this file rather than
 working around it.
 
-> **One known exception, pending a fix upstream.** The cross-repo doc's
-> "Org secrets and variables (already exist — reference, never recreate)"
-> section predates an owner ruling: on this org's GitHub plan, **private
-> repositories cannot read org-level secrets or variables**, and product repos
-> stay private. Each private repo therefore holds **repository-level copies**
-> of the credentials it uses (step 2). The doc correction is tracked in
-> [sparxstar-code-conformance#35](https://github.com/Starisian-Technologies/sparxstar-code-conformance/issues/35).
-> Until that lands, follow step 2 here for *where* the values live, and the
-> cross-repo doc for *what they are called*.
->
-> `sparxstar-product-specification-registry` →
-> `specs/_platform/SPARXSTAR-CROSS-REPO-ACCESS-STANDARD.md` is **not** the
-> home for any of this. Where you see it cited, follow the code-conformance
-> doc instead.
+`sparxstar-product-specification-registry` →
+`specs/_platform/SPARXSTAR-CROSS-REPO-ACCESS-STANDARD.md` is **not** the home
+for any of this. Where you see it cited, follow the code-conformance doc instead.
 
 ---
 
