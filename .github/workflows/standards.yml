@@ -195,7 +195,7 @@ jobs:
         # the live remote (refs/tags/v3 and refs/tags/v3.2.0 both point at
         # it); re-resolve with `git ls-remote --tags` before changing it,
         # never copy a SHA from memory.
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
           client-id: ${{ vars.COMPOSER_RESOLVER_CLIENT_ID }}
           private-key: ${{ secrets.COMPOSER_RESOLVER_PRIVATE_KEY }}
@@ -207,7 +207,7 @@ jobs:
         if: steps.creds.outputs.creds == 'true' && github.event.repository.private == true
         continue-on-error: true
         # SHA-pinned for the same reason as the probe above.
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
           client-id: ${{ vars.COMPOSER_RESOLVER_CLIENT_ID }}
           private-key: ${{ secrets.COMPOSER_RESOLVER_PRIVATE_KEY }}
