@@ -319,6 +319,16 @@ jobs:
     name: Version drift
     needs: preflight
     if: needs.preflight.outputs.drift == 'true'
+    # Every run of this job writes the same drift/<owner>-<repo>.json in the
+    # governance registry, and the callee pushes once with no conflict
+    # retry. Overlapping runs (a push to develop while a PR is open) would
+    # race and fail an otherwise passing check, so this repo's version-check
+    # runs one at a time. An in-progress write is never cancelled; GitHub
+    # keeps at most one waiting run per group, so a superseded waiting run
+    # shows as cancelled rather than failed.
+    concurrency:
+      group: drift-record-${{ github.repository }}
+      cancel-in-progress: false
     uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/version-drift-enforcement.yml@v1.0.4
     with:
       contract_ref: v1.0.4
