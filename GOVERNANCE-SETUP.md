@@ -170,7 +170,9 @@ What an **org owner** must do for this repository:
    > 1. Set the contract-sync values above: both Actions entries, plus the
    >    Dependabot copy where Dependabot runs.
    > 2. Move every `sparxstar-code-conformance` pin **and** `contract_ref` to
-   >    `v1.0.4` or later.
+   >    `v1.0.6` or later. `v1.0.4` is the first release that writes to the
+   >    registry; `v1.0.6` adds the push retry, so no `concurrency:` group is
+   >    needed. Go straight to `v1.0.6` rather than bumping twice.
    > 3. Remove the `write_drift_record: false` override, and pass
    >    `CONTRACT_SYNC_PRIVATE_KEY: ${{ secrets.CONTRACT_SYNC_PRIVATE_KEY }}` by
    >    name in `version-check`'s `secrets:` block.
