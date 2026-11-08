@@ -326,6 +326,8 @@ jobs:
     # runs one at a time. An in-progress write is never cancelled; GitHub
     # keeps at most one waiting run per group, so a superseded waiting run
     # shows as cancelled rather than failed.
+    # TEMPORARY: remove this block when moving to sparxstar-code-conformance
+    # v1.0.5, whose drift-record push retries on rejection (owner ruling).
     concurrency:
       group: drift-record-${{ github.repository }}
       cancel-in-progress: false
