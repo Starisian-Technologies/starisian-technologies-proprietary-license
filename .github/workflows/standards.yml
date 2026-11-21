@@ -371,7 +371,7 @@ jobs:
     # v1.1.1 still calls create-github-app-token@v3 internally, and a caller
     # inherits whatever its pinned tag contains. Both reach consumers only
     # when a new reviewer release is cut.
-    uses: Starisian-Technologies/sparxstar-claude-pr-review/.github/workflows/claude-pr-review.yml@v1.1.1
+    uses: Starisian-Technologies/sparxstar-claude-pr-review/.github/workflows/claude-pr-review.yml@v1.1.2
     with:
       # The registry tag to review against. Must name a tag that actually
       # exists on the ADR and product-spec registries — this is NOT this
