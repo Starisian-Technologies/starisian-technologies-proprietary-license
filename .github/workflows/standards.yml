@@ -1,3 +1,5 @@
+# Central review migration: this public template no longer invokes the reviewer reusable workflow.
+# Private repositories created from this template must install the central relay after activation.
 # ============================================================================
 # Starisian Standards — governance caller for a repo created from the
 # starisian-technologies-proprietary-license template.
@@ -227,7 +229,6 @@ jobs:
           SYNC: ${{ steps.creds.outputs.sync }}
           PROBE_CONFORMANCE: ${{ steps.probe-conformance.outcome }}
           PROBE_REVIEW: ${{ steps.probe-review.outcome }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           REPO_IS_PRIVATE: ${{ github.event.repository.private }}
         run: |
           set -euo pipefail
@@ -258,22 +259,8 @@ jobs:
             echo "::warning::Conformance gates SKIPPED — the composer-resolver App minted no token for sparxstar-code-conformance. Both credentials ARE visible, so the likely cause is App scope (org Settings -> GitHub Apps -> composer-resolver -> Repository access must include that repo). A revoked installation, an invalid key, or a GitHub API outage produce the same signal here — the mint step's own log says which. See GOVERNANCE-SETUP.md Troubleshooting."
           fi
 
-          # The reviewer refuses to run unless the caller repo is private: it
-          # pulls private registry content into an Actions artifact, and
-          # artifacts on a public repo are world-readable. Skip rather than
-          # let the callee fail.
-          if [[ "${REPO_IS_PRIVATE:-}" != "true" ]]; then
-            echo "review=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Claude PR review SKIPPED by design — this repository is public, and the reviewer reads private registries into a run artifact."
-          elif [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
-            echo "review=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Claude PR review SKIPPED — ANTHROPIC_API_KEY is not visible to this repository. Fix: GOVERNANCE-SETUP.md step 2."
-          elif [[ "${PROBE_REVIEW}" == "success" ]]; then
-            echo "review=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "review=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Claude PR review SKIPPED — the composer-resolver App minted no token for the ADR and product-spec registries. Both credentials ARE visible, so the likely cause is App scope, which must include BOTH registries. A revoked installation, an invalid key, or an API outage look the same here — read the mint step's log. See GOVERNANCE-SETUP.md Troubleshooting."
-          fi
+          echo "review=false" >> "$GITHUB_OUTPUT"
+          echo "::notice::AI review is not performed by this public template; install the central relay in private consumers."
 
   # --------------------------------------------------------------------------
   # version-check — applies to EVERY repo type, so it ships active.
@@ -353,33 +340,14 @@ jobs:
   # --------------------------------------------------------------------------
   review:
     name: Claude PR review
-    needs: preflight
-    if: github.event_name == 'pull_request' && needs.preflight.outputs.review == 'true'
-    permissions:
-      contents: read
-      pull-requests: write
-    # @v1.1.1 — the highest published reviewer tag. It carries the
-    # checkout-target security fixes released after v1.1.0, with a
-    # workflow_call interface verified identical to v1.1.0's (both inputs,
-    # both required secrets).
-    #
-    # Precise about what is and is not true yet: the promotion of v1.1.1 to
-    # documented canon — README, consumer example and contract tests in
-    # sparxstar-claude-pr-review — is on that repo's open PR, NOT inside the
-    # published v1.1.1 tag, whose own docs still say v1.1.0. Likewise that
-    # PR SHA-pins the privileged mint steps in build-context; the published
-    # v1.1.1 still calls create-github-app-token@v3 internally, and a caller
-    # inherits whatever its pinned tag contains. Both reach consumers only
-    # when a new reviewer release is cut.
-    uses: Starisian-Technologies/sparxstar-claude-pr-review/.github/workflows/claude-pr-review.yml@v1.1.1
-    with:
-      # The registry tag to review against. Must name a tag that actually
-      # exists on the ADR and product-spec registries — this is NOT this
-      # repo's own pin, and the two version lines move independently.
-      contract_ref: v1.0.0
-    secrets:
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      COMPOSER_RESOLVER_PRIVATE_KEY: ${{ secrets.COMPOSER_RESOLVER_PRIVATE_KEY }}
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Report unsupported public review
+        run: |
+          echo "::notice::No AI review performed. The central reviewer supports private repositories and is migrating to private execution."
+          echo "### AI review not performed" >> "$GITHUB_STEP_SUMMARY"
+          echo "This public repository no longer calls the private reviewer. Use the native Codex integration where enabled; private consumers must install the central relay." >> "$GITHUB_STEP_SUMMARY"
 
   # ==========================================================================
   # PER-REPO-TYPE JOBS — uncomment the block that matches this repo.
