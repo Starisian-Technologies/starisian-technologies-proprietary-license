@@ -205,22 +205,6 @@ jobs:
           # Mirrors version-drift-enforcement.yml's own mint scope.
           repositories: sparxstar-code-conformance
 
-      - id: probe-review
-        if: steps.creds.outputs.creds == 'true' && github.event.repository.private == true
-        continue-on-error: true
-        # SHA-pinned for the same reason as the probe above.
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
-        with:
-          client-id: ${{ vars.COMPOSER_RESOLVER_CLIENT_ID }}
-          private-key: ${{ secrets.COMPOSER_RESOLVER_PRIVATE_KEY }}
-          owner: Starisian-Technologies
-          # The two registries claude-pr-review's build-context checks out.
-          # It does NOT need access to this repo: its PR-head checkout uses
-          # the default GITHUB_TOKEN.
-          repositories: |
-            sparxstar-architecture-governance-registry
-            sparxstar-product-specification-registry
-
       # STEP 3 — decide, and say precisely which condition failed.
       - id: decide
         shell: bash
@@ -228,8 +212,6 @@ jobs:
           CREDS: ${{ steps.creds.outputs.creds }}
           SYNC: ${{ steps.creds.outputs.sync }}
           PROBE_CONFORMANCE: ${{ steps.probe-conformance.outcome }}
-          PROBE_REVIEW: ${{ steps.probe-review.outcome }}
-          REPO_IS_PRIVATE: ${{ github.event.repository.private }}
         run: |
           set -euo pipefail
 
