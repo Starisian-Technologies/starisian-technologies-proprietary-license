@@ -197,7 +197,7 @@ jobs:
         # the live remote (refs/tags/v3 and refs/tags/v3.2.0 both point at
         # it); re-resolve with `git ls-remote --tags` before changing it,
         # never copy a SHA from memory.
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
         with:
           client-id: ${{ vars.COMPOSER_RESOLVER_CLIENT_ID }}
           private-key: ${{ secrets.COMPOSER_RESOLVER_PRIVATE_KEY }}
