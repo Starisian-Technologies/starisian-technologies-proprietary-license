@@ -291,7 +291,7 @@ jobs:
     # No concurrency group: from v1.0.6 the callee retries a rejected
     # drift-record push on top of the registry's latest main, so overlapping
     # runs no longer race (see the cross-repo doc, "Drift records").
-    uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/version-drift-enforcement.yml@v1.0.6
+    uses: Starisian-Technologies/sparxstar-code-conformance/.github/workflows/version-drift-enforcement.yml@v1.2.0
     with:
       contract_ref: v1.0.6
     secrets:
